@@ -17,7 +17,6 @@ const { parseFormSchema } = require("@fieldo/form-core") as {
   parseFormSchema: (s: unknown) => FormSchemaV1;
 };
 import { api, API_BASE, ApiError } from "./api.js";
-import { schemaFromDescription } from "./nl.js";
 import { embedCode, EMBED_TARGETS } from "./embed.js";
 
 const server = new McpServer({ name: "fieldo", version: "0.1.0" });
@@ -134,14 +133,25 @@ tool(
     description: z.string().optional().describe("Natural-language description of the form"),
   },
   async ({ title, schema, description }) => {
-    const finalSchema = schema
-      ? parseFormSchema(schema)
-      : schemaFromDescription(String(description ?? ""), title as string | undefined);
+    let finalSchema: FormSchemaV1;
+    let generator: string | undefined;
+    if (schema) {
+      finalSchema = parseFormSchema(schema);
+    } else {
+      // Dashboard runs the AI pass (Claude w/ structured output), falling back
+      // to the deterministic keyword heuristic when no API key is configured.
+      const gen = await api<{ schema: FormSchemaV1; source: string }>(`/api/ai/generate-form`, {
+        method: "POST",
+        body: { description: String(description ?? ""), title },
+      });
+      finalSchema = gen.schema;
+      generator = gen.source;
+    }
     const r = await api<{ form: FormRow }>(`/api/forms`, {
       method: "POST",
       body: { title: title ?? finalSchema.title, schema: finalSchema },
     });
-    return r.form;
+    return generator ? { ...r.form, _generatedBy: generator } : r.form;
   }
 );
 

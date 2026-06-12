@@ -42,6 +42,14 @@ create → publish → meta/render-token → valid submit → logic-hidden-field
 - **Routes**: `GET/POST /api/forms/[id]/destinations`, `GET/PATCH/DELETE .../destinations/[did]` (GET includes last 100 deliveries). Form DELETE cascades destinations+deliveries
 - **Verified** `node scripts/fanout-verify.mjs` (needs server w/ `FANOUT_RETRY_BASE_MS=1000`): 13/13 — HMAC verifies externally, flaky endpoint succeeds on attempt 3, email-without-key audited, test-session + disabled-destination exclusions. e2e (9) + MCP (19) suites still green
 
-## NEXT STEP
+## AI generation + builder UI — DONE ✅ (June 12)
 
-1. AI form generation, builder UI
+- **AI form generation**: `POST /api/ai/generate-form` (`lib/ai.ts`) — Claude `claude-opus-4-8` via @anthropic-ai/sdk, adaptive thinking, structured output (`output_config.format` json_schema mirroring FormSchemaV1 incl. logic), result re-validated by `parseFormSchema`. **Falls back to the deterministic keyword heuristic when `ANTHROPIC_API_KEY` unset** (heuristic moved to `@fieldo/form-core` `nl.ts`); also falls back on refusal stop_reason. MCP `create_form` now calls this endpoint for NL descriptions. AI path is typechecked but only runtime-exercised with a key — local verification ran the heuristic path
+- **Builder UI** (`components/builder.tsx` + rewritten `app/forms/[id]/page.tsx`): tabs Build | JSON | Theme | Settings | Share. Build = palette (15 field types) → drag-reorderable field list (HTML5 DnD) → property panel (label/placeholder/help/required/options/hiddenSource); multi-page add/remove. Theme = color pickers + tokens. Settings = submit behavior, dedupe, time-trap, maxResponses, allowedOrigins. Schema object is single source of truth; JSON tab and live preview stay in sync. Home page got an "✨ Generate with AI" box
+- **Verified in a real browser**: NL description → generated form landed in builder → renamed field, added phone → publish → hosted page reflected edits → live submit stored complete with all answers (incl. rating). All suites green: e2e 9, MCP 19, fanout 13
+
+## NEXT STEP (post-v1 / hardening)
+
+1. Auth (multi-user), Postgres + Redis swap, BullMQ worker extraction
+2. Framer Marketplace submission, OG images, iframe auto-height postMessage
+3. Logic rule builder UI (logic editable via JSON tab / MCP set_logic only), file upload field backend (presigned R2), partials resume UI

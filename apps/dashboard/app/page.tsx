@@ -16,7 +16,9 @@ interface FormRow {
 export default function HomePage() {
   const [forms, setForms] = useState<FormRow[]>([]);
   const [title, setTitle] = useState("");
+  const [description, setDescription] = useState("");
   const [creating, setCreating] = useState(false);
+  const [aiError, setAiError] = useState("");
   const router = useRouter();
 
   useEffect(() => {
@@ -35,6 +37,32 @@ export default function HomePage() {
     const d = await res.json();
     setCreating(false);
     if (d.form) router.push(`/forms/${d.form.id}`);
+  };
+
+  const generate = async () => {
+    if (!description.trim()) return;
+    setCreating(true);
+    setAiError("");
+    const gen = await fetch("/api/ai/generate-form", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ description, title: title || undefined }),
+    });
+    const g = await gen.json();
+    if (!gen.ok) {
+      setAiError(g.error ?? "Generation failed");
+      setCreating(false);
+      return;
+    }
+    const res = await fetch("/api/forms", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ title: g.schema.title, schema: g.schema }),
+    });
+    const d = await res.json();
+    setCreating(false);
+    if (d.form) router.push(`/forms/${d.form.id}`);
+    else setAiError(d.error ?? "Create failed");
   };
 
   return (
@@ -56,6 +84,20 @@ export default function HomePage() {
             New blank form
           </button>
         </div>
+        <div className="row" style={{ marginTop: 10 }}>
+          <input
+            className="text"
+            style={{ maxWidth: 520 }}
+            placeholder="…or describe it: contact form asking name, work email, company size"
+            value={description}
+            onChange={(e) => setDescription(e.target.value)}
+            onKeyDown={(e) => e.key === "Enter" && generate()}
+          />
+          <button className="btn" disabled={creating || !description.trim()} onClick={generate}>
+            {creating ? "Generating…" : "✨ Generate with AI"}
+          </button>
+        </div>
+        {aiError && <p className="error-text" style={{ marginTop: 8 }}>{aiError}</p>}
       </div>
 
       <div className="card">

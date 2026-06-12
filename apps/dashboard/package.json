@@ -10,6 +10,7 @@
     "build:embed": "node build-embed.mjs"
   },
   "dependencies": {
+    "@anthropic-ai/sdk": "^0.104.1",
     "@fieldo/db": "workspace:*",
     "@fieldo/form-core": "workspace:*",
     "@fieldo/react": "workspace:^",
