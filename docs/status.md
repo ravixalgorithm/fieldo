@@ -1,4 +1,4 @@
-# Build Status — June 12, 2026
+# Build Status — June 12, 2026 (updated after verification)
 
 ## Done (Phase 0 + inbox slice, uncommitted → now committed)
 
@@ -12,21 +12,15 @@
   - UI: forms list + contact template, JSON editor w/ live `<FormRenderer mode="preview">`, share/embed tab, inbox w/ spam folder + detail + recover/delete, analytics page, hosted `/f/[slug]` (SSR + `?embed=1`)
 - No auth yet (single-user local). In-memory rate limit (Redis later). Worker/MCP/Framer component not started.
 
-## Where we stopped (NEXT STEP)
+## Verification — DONE ✅
 
-`pnpm install` ✅, dev server runs ✅ (`cd apps/dashboard && pnpm dev` → http://localhost:3210, home returns 200).
+The earlier create-form failure was Next/webpack bundling better-sqlite3 (`bindings` lookup broke with "Cannot read properties of undefined (reading 'indexOf')"). `serverComponentsExternalPackages` wasn't taking effect because better-sqlite3 wasn't resolvable from `apps/dashboard` under pnpm. Fixed by adding `better-sqlite3` as a direct dashboard dependency + explicit server webpack external in `next.config.mjs`.
 
-**Mid-verification, interrupted.** The end-to-end curl test (create → publish → meta → submit variants) failed at step 1: the parse of the create-form response failed — the POST to `/api/forms` response shape needs inspecting. First action on resume:
+Full e2e suite in `scripts/e2e-verify.sh` (run with dev server up: `bash scripts/e2e-verify.sh`) — all pass:
+create → publish → meta/render-token → valid submit → logic-hidden-field injection stripped server-side → 422 on missing required → honeypot silent reject (fake 200, stored `rejected`) → dedupe-by-email 409 → stored statuses/email correct → analytics 200.
 
-```bash
-curl -s -i -X POST http://localhost:3210/api/forms -H 'content-type: application/json' -d '{"title":"Debug form"}'
-```
+## NEXT STEP
 
-Then re-run the full verification: valid submit, hidden-field injection strip, 422 on missing required, honeypot silent reject, check inbox + spam folder + analytics in the UI.
-
-## After verification
-
-1. Commit (done alongside this file)
-2. Framer component (`apps/component/FieldoForm.tsx`) + `embed.js` + `@fieldo/react`
-3. MCP server (28 tools per PRD §5.3.8) + OAuth/auth port from FrameVid
-4. Worker fan-out (email/webhook), AI form generation, builder UI
+1. Framer component (`apps/component/FieldoForm.tsx`) + `embed.js` + `@fieldo/react`
+2. MCP server (28 tools per PRD §5.3.8) + OAuth/auth port from FrameVid
+3. Worker fan-out (email/webhook), AI form generation, builder UI
