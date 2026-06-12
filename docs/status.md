@@ -27,7 +27,13 @@ create → publish → meta/render-token → valid submit → logic-hidden-field
 - **Verified in a real headless browser**: embed.js on a foreign-origin page (port 8077) rendered, submitted, success message shown; stored submission status=complete, embedSource=html, spamScore=0. Test page: `scripts/embed-test/index.html` (form id hardcoded — recreate if DB reset)
 - Not done from Phase 3: Marketplace submission (needs real Framer project), OG image gen, postMessage auto-height for iframe embed
 
+## MCP server — DONE ✅ (June 12)
+
+- **apps/mcp** (`@fieldo/mcp`) — stdio MCP server (`pnpm start`, needs dashboard on :3210; `FIELDO_API_URL` overrides). 31 tools across all PRD §5.3.8 groups: Library (workspaces/folders stubbed for single-user, list/get/search forms), Management (create incl. NL-description heuristic in `src/nl.ts`, field add/remove/update, set_logic, settings/theme merge, publish/unpublish/duplicate, delete w/ confirm guard), Submissions (list/get/export/partials/mark/delete w/ confirm), Analytics (form funnel, field funnel, heuristic friction insights, workspace aggregate), Developer (form API info, embed code for 5 targets, scaffold integration, test_submit through the real pipeline marked read, form status)
+- New dashboard routes for it: `POST /api/forms/[id]/unpublish`, `POST /api/forms/[id]/duplicate`, `GET /api/forms/[id]/partials`
+- **Verified** via `node scripts/mcp-verify.mjs` (real stdio JSON-RPC client): 19/19 incl. the headline recipe create_form(NL) → publish → generate_embed_code
+- Deferred: OAuth (no auth in app yet — single-user local), AI-powered create_form (deterministic keyword heuristic for now), hosted remote endpoint
+
 ## NEXT STEP
 
-1. MCP server (28 tools per PRD §5.3.8) + OAuth/auth port from FrameVid
-2. Worker fan-out (email/webhook), AI form generation, builder UI
+1. Worker fan-out (email/webhook), AI form generation, builder UI
