@@ -1,10 +1,13 @@
 import { NextRequest, NextResponse } from "next/server";
 import { generateFormSchema } from "@/lib/ai";
+import { requireAuth } from "@/lib/auth";
 
 export const dynamic = "force-dynamic";
 export const maxDuration = 60; // AI generation can take a while
 
 export async function POST(req: NextRequest) {
+  const ctx = requireAuth(req);
+  if (!ctx) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   const body = await req.json().catch(() => null);
   const description = typeof body?.description === "string" ? body.description.trim() : "";
   if (!description) return NextResponse.json({ error: "description required" }, { status: 400 });

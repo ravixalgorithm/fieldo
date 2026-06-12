@@ -3,16 +3,25 @@ import { eq } from "drizzle-orm";
 import { getDb, forms, submissions, formEvents, partialSubmissions, formVersions, destinations, destinationDeliveries } from "@fieldo/db";
 import { inArray } from "drizzle-orm";
 import { getFormById, updateDraft } from "@/lib/forms";
+import { requireAuth, ownsForm } from "@/lib/auth";
 
 export const dynamic = "force-dynamic";
 
-export async function GET(_req: NextRequest, { params }: { params: { id: string } }) {
+export async function GET(req: NextRequest, { params }: { params: { id: string } }) {
+  const ctx = requireAuth(req);
+  if (!ctx) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  const owned = getFormById(params.id);
+  if (!owned || !ownsForm(ctx, owned)) return NextResponse.json({ error: "Not found" }, { status: 404 });
   const form = getFormById(params.id);
   if (!form) return NextResponse.json({ error: "Not found" }, { status: 404 });
   return NextResponse.json({ form });
 }
 
 export async function PUT(req: NextRequest, { params }: { params: { id: string } }) {
+  const ctx = requireAuth(req);
+  if (!ctx) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  const owned = getFormById(params.id);
+  if (!owned || !ownsForm(ctx, owned)) return NextResponse.json({ error: "Not found" }, { status: 404 });
   if (!getFormById(params.id)) return NextResponse.json({ error: "Not found" }, { status: 404 });
   const body = await req.json().catch(() => null);
   if (!body?.schema) return NextResponse.json({ error: "schema required" }, { status: 400 });
@@ -24,7 +33,11 @@ export async function PUT(req: NextRequest, { params }: { params: { id: string }
   }
 }
 
-export async function DELETE(_req: NextRequest, { params }: { params: { id: string } }) {
+export async function DELETE(req: NextRequest, { params }: { params: { id: string } }) {
+  const ctx = requireAuth(req);
+  if (!ctx) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  const owned = getFormById(params.id);
+  if (!owned || !ownsForm(ctx, owned)) return NextResponse.json({ error: "Not found" }, { status: 404 });
   const db = getDb();
   if (!getFormById(params.id)) return NextResponse.json({ error: "Not found" }, { status: 404 });
   const destIds = db

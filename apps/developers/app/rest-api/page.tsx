@@ -42,7 +42,7 @@ const res = await fetch("${DASHBOARD_URL}/api/v1/forms/FORM_ID/submit", {
       </Section>
 
       <Section title="Management API">
-        <P>Single-user local build: unauthenticated today, OAuth-scoped when hosted. The MCP tools wrap these.</P>
+        <P>Authenticated: send <C>Authorization: Bearer fld_…</C> (create keys in Settings → API keys) or use a dashboard session. Every query is scoped to the key&apos;s workspace. The MCP tools wrap these endpoints.</P>
         <DocTable
           head={["Endpoint", "Description"]}
           rows={[

@@ -4,11 +4,14 @@
 import { spawn } from "node:child_process";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
+import { testAuth } from "./test-auth.mjs";
 
 const root = path.dirname(path.dirname(fileURLToPath(import.meta.url)));
+const { apiKey } = await testAuth();
 const proc = spawn("node", [path.join(root, "apps/mcp/node_modules/tsx/dist/cli.mjs"), "src/index.ts"], {
   cwd: path.join(root, "apps/mcp"),
   stdio: ["pipe", "pipe", "inherit"],
+  env: { ...process.env, FIELDO_API_KEY: apiKey },
 });
 
 let buf = "";

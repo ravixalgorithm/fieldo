@@ -3,10 +3,58 @@ import { integer, real, sqliteTable, text, uniqueIndex, index } from "drizzle-or
 // SQLite for zero-setup local dev; column shapes mirror the PRD's Postgres
 // schema so the swap to Drizzle/pg is mechanical.
 
+export const users = sqliteTable(
+  "users",
+  {
+    id: text("id").primaryKey(),
+    email: text("email").notNull(),
+    name: text("name"),
+    passwordHash: text("password_hash").notNull(),
+    createdAt: integer("created_at", { mode: "timestamp_ms" }).notNull(),
+  },
+  (t) => ({ emailIdx: uniqueIndex("users_email_idx").on(t.email) })
+);
+
+export const workspaces = sqliteTable("workspaces", {
+  id: text("id").primaryKey(),
+  name: text("name").notNull(),
+  plan: text("plan").notNull().default("free"),
+  createdAt: integer("created_at", { mode: "timestamp_ms" }).notNull(),
+});
+
+export const workspaceMembers = sqliteTable(
+  "workspace_members",
+  {
+    id: text("id").primaryKey(),
+    workspaceId: text("workspace_id").notNull(),
+    userId: text("user_id").notNull(),
+    role: text("role", { enum: ["owner", "admin", "member"] }).notNull().default("owner"),
+    createdAt: integer("created_at", { mode: "timestamp_ms" }).notNull(),
+  },
+  (t) => ({ wsUserIdx: uniqueIndex("members_ws_user_idx").on(t.workspaceId, t.userId) })
+);
+
+export const apiKeys = sqliteTable(
+  "api_keys",
+  {
+    id: text("id").primaryKey(),
+    workspaceId: text("workspace_id").notNull(),
+    name: text("name").notNull(),
+    /** sha256 of the full key; the key itself is shown once at creation */
+    keyHash: text("key_hash").notNull(),
+    /** first 12 chars for display, e.g. fld_AbC12xYz */
+    prefix: text("prefix").notNull(),
+    lastUsedAt: integer("last_used_at", { mode: "timestamp_ms" }),
+    createdAt: integer("created_at", { mode: "timestamp_ms" }).notNull(),
+  },
+  (t) => ({ keyHashIdx: uniqueIndex("api_keys_hash_idx").on(t.keyHash) })
+);
+
 export const forms = sqliteTable(
   "forms",
   {
     id: text("id").primaryKey(),
+    workspaceId: text("workspace_id"),
     title: text("title").notNull(),
     slug: text("slug").notNull(),
     status: text("status", { enum: ["draft", "published", "closed", "archived"] })

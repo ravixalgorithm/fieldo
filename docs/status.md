@@ -53,6 +53,16 @@ create → publish → meta/render-token → valid submit → logic-hidden-field
 - **apps/developers** (`@fieldo/developers`, port **3211**, `pnpm dev`) — FramerVid/Seelo-pattern docs shell (sidebar + rounded reading pane, same Fieldo tokens/fonts). Pages: Overview (quickstart, surfaces, architecture), MCP Server (Claude Code + Claude Desktop setup, config, safety model), MCP Tools (all 31 documented w/ scopes), REST API (public v1 + management endpoints, webhook HMAC verification, spam-score table), Embeds (all 5 surfaces w/ snippets)
 - Dashboard sidebar links to it ("Developers ↗")
 
+## Auth + multi-tenancy — DONE ✅ (June 12)
+
+- **DB**: users (scrypt salt:hash), workspaces, workspace_members (roles), api_keys (sha256-at-rest, prefix display, last_used); forms.workspace_id (ALTER migration for old DBs; first account adopts orphan forms)
+- **lib/auth.ts**: HMAC-signed stateless session cookie (httpOnly, 14d, `FIELDO_AUTH_SECRET`), timingSafeEqual everywhere; `requireAuth` accepts session cookie OR `Authorization: Bearer fld_…`; `ownsForm` guard
+- **Routes**: /api/auth/{signup,login,logout,me}; /api/keys CRUD. ALL management routes 401 unauthenticated + workspace-scoped (list filtered, per-form ownership = 404 cross-tenant). Public v1 + /f/ untouched
+- **UI**: (auth) login/signup pages, dashboard layout redirects to /login, sidebar user card w/ logout, Settings page (profile + API keys w/ one-time secret display + revoke)
+- **MCP**: sends FIELDO_API_KEY as Bearer; suites authenticate via scripts/test-auth.mjs (suite@fieldo.test)
+- **Verified**: e2e 9 / MCP 19 / fanout 13 green under auth; browser: signup → empty dashboard (workspace isolation confirmed), key create → Bearer 200 / bad key 401, logout → /login redirect
+- Deferred: roles enforcement beyond owner, team invites, email verification, password reset, OAuth for MCP remote
+
 ## NEXT STEP (post-v1 / hardening)
 
 1. Auth (multi-user), Postgres + Redis swap, BullMQ worker extraction

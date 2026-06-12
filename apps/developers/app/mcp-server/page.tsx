@@ -41,7 +41,10 @@ claude mcp add fieldo -- pnpm --dir <repo>/apps/mcp start`}</Code>
     "fieldo": {
       "command": "pnpm",
       "args": ["--dir", "C:/path/to/fieldo/apps/mcp", "start"],
-      "env": { "FIELDO_API_URL": "http://localhost:3210" }
+      "env": {
+        "FIELDO_API_URL": "http://localhost:3210",
+        "FIELDO_API_KEY": "fld_..."
+      }
     }
   }
 }`}</Code>
@@ -52,6 +55,7 @@ claude mcp add fieldo -- pnpm --dir <repo>/apps/mcp start`}</Code>
           head={["Env var", "Default", "Purpose"]}
           rows={[
             ["FIELDO_API_URL", "http://localhost:3210", "Origin of the Fieldo dashboard API the tools drive."],
+            ["FIELDO_API_KEY", "—", "Workspace API key (fld_…) from Settings → API keys. Required — the management API is authenticated."],
           ]}
         />
         <P>

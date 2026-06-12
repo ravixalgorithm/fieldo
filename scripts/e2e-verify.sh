@@ -3,6 +3,13 @@
 set -u
 BASE=http://localhost:3210
 PASS=0; FAIL=0
+# authenticate the suite user (signup, falling back to login)
+JAR=$(mktemp)
+code=$(curl -s -o /dev/null -w '%{http_code}' -c "$JAR" -X POST $BASE/api/auth/signup -H 'content-type: application/json' -d '{"email":"suite@fieldo.test","password":"fieldo-test-password","name":"Suite"}')
+if [ "$code" != "201" ]; then
+  curl -s -o /dev/null -c "$JAR" -X POST $BASE/api/auth/login -H 'content-type: application/json' -d '{"email":"suite@fieldo.test","password":"fieldo-test-password"}'
+fi
+AUTH=(-b "$JAR")
 ok()  { PASS=$((PASS+1)); echo "  PASS: $1"; }
 bad() { FAIL=$((FAIL+1)); echo "  FAIL: $1"; }
 
@@ -22,12 +29,12 @@ SCHEMA='{
 }'
 
 echo "1) Create form"
-CREATE=$(curl -s -X POST $BASE/api/forms -H 'content-type: application/json' -d "{\"title\":\"E2E Test Form\",\"schema\":$SCHEMA}")
+CREATE=$(curl -s "${AUTH[@]}" -X POST $BASE/api/forms -H 'content-type: application/json' -d "{\"title\":\"E2E Test Form\",\"schema\":$SCHEMA}")
 FID=$(echo "$CREATE" | node -e "let d='';process.stdin.on('data',c=>d+=c).on('end',()=>console.log(JSON.parse(d).form?.id??''))")
 [ -n "$FID" ] && ok "created $FID" || { bad "create: $CREATE"; exit 1; }
 
 echo "2) Publish"
-PUB=$(curl -s -X POST $BASE/api/forms/$FID/publish)
+PUB=$(curl -s "${AUTH[@]}" -X POST $BASE/api/forms/$FID/publish)
 echo "$PUB" | grep -q '"version":1' && ok "published v1" || bad "publish: $PUB"
 
 echo "3) Meta + render token"
@@ -64,7 +71,7 @@ CODE=$(curl -s -o /dev/null -w '%{http_code}' -X POST $BASE/api/v1/forms/$FID/su
 [ "$CODE" = 409 ] && ok "409 on duplicate email" || bad "expected 409, got $CODE"
 
 echo "9) Inspect stored submissions"
-SUBS=$(curl -s "$BASE/api/forms/$FID/submissions")
+SUBS=$(curl -s "${AUTH[@]}" "$BASE/api/forms/$FID/submissions")
 echo "$SUBS" | node -e '
 let d="";process.stdin.on("data",c=>d+=c).on("end",()=>{
   const subs=(JSON.parse(d).submissions??[]);
@@ -80,7 +87,7 @@ let d="";process.stdin.on("data",c=>d+=c).on("end",()=>{
 });' || FAIL=$((FAIL+1))
 
 echo "10) Analytics endpoint"
-CODE=$(curl -s -o /dev/null -w '%{http_code}' $BASE/api/forms/$FID/analytics)
+CODE=$(curl -s "${AUTH[@]}" -o /dev/null -w '%{http_code}' $BASE/api/forms/$FID/analytics)
 [ "$CODE" = 200 ] && ok "analytics 200" || bad "analytics: $CODE"
 
 echo

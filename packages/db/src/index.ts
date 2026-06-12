@@ -10,8 +10,31 @@ export { nanoid } from "nanoid";
 export type Db = BetterSQLite3Database<typeof schema>;
 
 const INIT_SQL = `
+CREATE TABLE IF NOT EXISTS users (
+  id TEXT PRIMARY KEY, email TEXT NOT NULL, name TEXT,
+  password_hash TEXT NOT NULL, created_at INTEGER NOT NULL
+);
+CREATE UNIQUE INDEX IF NOT EXISTS users_email_idx ON users (email);
+
+CREATE TABLE IF NOT EXISTS workspaces (
+  id TEXT PRIMARY KEY, name TEXT NOT NULL, plan TEXT NOT NULL DEFAULT 'free',
+  created_at INTEGER NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS workspace_members (
+  id TEXT PRIMARY KEY, workspace_id TEXT NOT NULL, user_id TEXT NOT NULL,
+  role TEXT NOT NULL DEFAULT 'owner', created_at INTEGER NOT NULL
+);
+CREATE UNIQUE INDEX IF NOT EXISTS members_ws_user_idx ON workspace_members (workspace_id, user_id);
+
+CREATE TABLE IF NOT EXISTS api_keys (
+  id TEXT PRIMARY KEY, workspace_id TEXT NOT NULL, name TEXT NOT NULL,
+  key_hash TEXT NOT NULL, prefix TEXT NOT NULL, last_used_at INTEGER, created_at INTEGER NOT NULL
+);
+CREATE UNIQUE INDEX IF NOT EXISTS api_keys_hash_idx ON api_keys (key_hash);
+
 CREATE TABLE IF NOT EXISTS forms (
-  id TEXT PRIMARY KEY, title TEXT NOT NULL, slug TEXT NOT NULL,
+  id TEXT PRIMARY KEY, workspace_id TEXT, title TEXT NOT NULL, slug TEXT NOT NULL,
   status TEXT NOT NULL DEFAULT 'draft', draft_schema TEXT NOT NULL,
   published_version_id TEXT, submission_count INTEGER NOT NULL DEFAULT 0,
   ai_insights TEXT, created_at INTEGER NOT NULL, updated_at INTEGER NOT NULL
@@ -75,6 +98,12 @@ export function getDb(): Db {
   const sqlite = new Database(file);
   sqlite.pragma("journal_mode = WAL");
   sqlite.exec(INIT_SQL);
+  // lightweight migrations for pre-existing local DBs
+  try {
+    sqlite.exec("ALTER TABLE forms ADD COLUMN workspace_id TEXT");
+  } catch {
+    /* column already exists */
+  }
   _db = drizzle(sqlite, { schema });
   return _db;
 }

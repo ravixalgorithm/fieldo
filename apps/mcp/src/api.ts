@@ -12,9 +12,12 @@ export async function api<T = unknown>(
   path: string,
   init?: { method?: string; body?: unknown; raw?: boolean }
 ): Promise<T> {
+  const headers: Record<string, string> = {};
+  if (init?.body !== undefined) headers["content-type"] = "application/json";
+  if (process.env.FIELDO_API_KEY) headers.authorization = `Bearer ${process.env.FIELDO_API_KEY}`;
   const res = await fetch(`${API_BASE}${path}`, {
     method: init?.method ?? "GET",
-    headers: init?.body !== undefined ? { "content-type": "application/json" } : undefined,
+    headers,
     body: init?.body !== undefined ? JSON.stringify(init.body) : undefined,
   });
   if (init?.raw) return (await res.text()) as T;

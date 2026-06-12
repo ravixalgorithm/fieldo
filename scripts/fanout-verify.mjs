@@ -3,14 +3,16 @@
 // Requires dashboard on :3210 started with FANOUT_RETRY_BASE_MS=1000.
 import http from "node:http";
 import crypto from "node:crypto";
+import { testAuth } from "./test-auth.mjs";
 
 const BASE = "http://localhost:3210";
+const { cookie } = await testAuth();
 let pass = 0, fail = 0;
 const check = (c, m) => (c ? (pass++, console.log("  PASS:", m)) : (fail++, console.log("  FAIL:", m)));
 const api = async (path, init) => {
   const res = await fetch(BASE + path, {
     ...init,
-    headers: init?.body ? { "content-type": "application/json" } : undefined,
+    headers: { cookie, ...(init?.body ? { "content-type": "application/json" } : {}) },
     body: init?.body ? JSON.stringify(init.body) : undefined,
   });
   return { status: res.status, data: await res.json().catch(() => null) };

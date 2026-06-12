@@ -1,5 +1,10 @@
 import Link from "next/link";
+import { redirect } from "next/navigation";
 import { SideNav } from "@/components/side-nav";
+import { UserCard } from "@/components/user-card";
+import { getAuth } from "@/lib/auth";
+
+export const dynamic = "force-dynamic";
 
 function BrandMark() {
   return (
@@ -14,6 +19,9 @@ function BrandMark() {
 }
 
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
+  const ctx = getAuth();
+  if (!ctx || !ctx.user) redirect("/login");
+
   return (
     <div className="app-shell">
       <aside className="sidebar">
@@ -27,14 +35,16 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         </div>
         <div>
           <nav className="side-nav" style={{ marginBottom: 10 }}>
+            <Link href="/settings">
+              <span className="nav-icon">⚙</span>
+              Settings
+            </Link>
             <a href="http://localhost:3211" target="_blank" rel="noreferrer">
               <span className="nav-icon">⌬</span>
               Developers ↗
             </a>
           </nav>
-          <div className="side-foot">
-            <span>Local workspace</span>
-          </div>
+          <UserCard name={ctx.user.name} email={ctx.user.email} />
         </div>
       </aside>
       <div className="content-area">

@@ -21,7 +21,7 @@ export function getPublishedSchema(form: { publishedVersionId: string | null }):
   return { schema: v.schema as FormSchemaV1, versionId: v.id };
 }
 
-export function createForm(title: string, schema?: unknown) {
+export function createForm(title: string, schema?: unknown, workspaceId?: string) {
   const db = getDb();
   const now = new Date();
   const id = "frm_" + nanoid(10);
@@ -37,7 +37,7 @@ export function createForm(title: string, schema?: unknown) {
         settings: {},
       };
   db.insert(forms)
-    .values({ id, title, slug, status: "draft", draftSchema: draft, createdAt: now, updatedAt: now })
+    .values({ id, workspaceId: workspaceId ?? null, title, slug, status: "draft", draftSchema: draft, createdAt: now, updatedAt: now })
     .run();
   return getFormById(id)!;
 }
