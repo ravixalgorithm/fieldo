@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { findUserByEmail, verifyPassword, setSessionCookie } from "@/lib/auth";
+import { findUserByEmail, verifyPassword, attachSessionCookie } from "@/lib/auth";
 
 export const dynamic = "force-dynamic";
 
@@ -15,6 +15,7 @@ export async function POST(req: NextRequest) {
   if (!user || !verifyPassword(password, user.passwordHash)) {
     return NextResponse.json({ error: "Incorrect email or password" }, { status: 401 });
   }
-  setSessionCookie(user.id);
-  return NextResponse.json({ user: { id: user.id, email: user.email, name: user.name } });
+  const res = NextResponse.json({ user: { id: user.id, email: user.email, name: user.name } });
+  attachSessionCookie(res, user.id);
+  return res;
 }

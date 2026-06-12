@@ -8,6 +8,7 @@ import crypto from "node:crypto";
 import { cookies } from "next/headers";
 import { eq, isNull } from "drizzle-orm";
 import { getDb, users, workspaces, workspaceMembers, apiKeys, forms, nanoid } from "@fieldo/db";
+import { ensureDemoSeeded } from "./ensure-demo-seed";
 
 const SECRET = process.env.FIELDO_AUTH_SECRET ?? "fieldo-dev-secret-change-in-production";
 const COOKIE = "fieldo_session";
@@ -53,16 +54,21 @@ function verify(token: string): { uid: string; exp: number } | null {
   }
 }
 
+const SESSION_COOKIE_OPTS = {
+  httpOnly: true,
+  secure: process.env.NODE_ENV === "production",
+  sameSite: "lax" as const,
+  maxAge: SESSION_TTL_MS / 1000,
+  path: "/",
+};
+
 export function setSessionCookie(userId: string) {
-  cookies().set({
-    name: COOKIE,
-    value: sign({ uid: userId }),
-    httpOnly: true,
-    secure: process.env.NODE_ENV === "production",
-    sameSite: "lax",
-    maxAge: SESSION_TTL_MS / 1000,
-    path: "/",
-  });
+  cookies().set({ name: COOKIE, value: sign({ uid: userId }), ...SESSION_COOKIE_OPTS });
+}
+
+/** Prefer this in route handlers so the cookie is bound to the response object. */
+export function attachSessionCookie(res: { cookies: { set: (opts: { name: string; value: string } & typeof SESSION_COOKIE_OPTS) => void } }, userId: string) {
+  res.cookies.set({ name: COOKIE, value: sign({ uid: userId }), ...SESSION_COOKIE_OPTS });
 }
 
 export function clearSessionCookie() {
@@ -135,6 +141,8 @@ function authByApiKey(bearer: string): AuthContext | null {
 
 /** Session-cookie auth for server components and routes. */
 export function getAuth(): AuthContext | null {
+  // Page and API routes run in separate Vercel lambdas — each needs its own DB copy.
+  if (process.env.VERCEL) ensureDemoSeeded();
   const token = cookies().get(COOKIE)?.value;
   if (!token) return null;
   const payload = verify(token);

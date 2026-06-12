@@ -98,11 +98,24 @@ function resolveDbPath(): string {
   return path.join(process.cwd(), ".data", "fieldo.db");
 }
 
+function resolveBundledDbPath(): string | null {
+  const candidates = [
+    path.join(process.cwd(), ".data", "fieldo.db"),
+    path.join(process.cwd(), "apps", "dashboard", ".data", "fieldo.db"),
+  ];
+  for (const candidate of candidates) {
+    if (fs.existsSync(candidate)) return candidate;
+  }
+  return null;
+}
+
 /** Copy the build-time seeded SQLite file into /tmp on first cold start. */
 function hydrateDbFromBundle(target: string) {
-  if (fs.existsSync(target)) return;
-  const bundled = path.join(process.cwd(), ".data", "fieldo.db");
-  if (!fs.existsSync(bundled)) return;
+  const bundled = resolveBundledDbPath();
+  if (!bundled) return;
+  // A prior cold start may have created an empty schema-only file — replace it.
+  const needsCopy = !fs.existsSync(target) || fs.statSync(target).size < 64 * 1024;
+  if (!needsCopy) return;
   fs.mkdirSync(path.dirname(target), { recursive: true });
   fs.copyFileSync(bundled, target);
 }

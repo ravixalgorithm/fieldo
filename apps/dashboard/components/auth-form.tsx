@@ -30,6 +30,7 @@ export function AuthForm({ mode }: { mode: "login" | "signup" }) {
     setError("");
     const res = await fetch(`/api/auth/${mode}`, {
       method: "POST",
+      credentials: "same-origin",
       headers: { "content-type": "application/json" },
       body: JSON.stringify(mode === "signup" ? { name, email, password } : { email, password }),
     });
