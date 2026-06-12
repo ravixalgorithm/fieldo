@@ -8,6 +8,7 @@ import { getFormById, getFormBySlug, getPublishedSchema } from "@/lib/forms";
 import { verifyRenderToken } from "@/lib/render-token";
 import { rateLimit } from "@/lib/rate-limit";
 import { corsJson, corsHeaders } from "@/lib/cors";
+import { enqueueFanout } from "@/lib/fanout";
 
 export const dynamic = "force-dynamic";
 
@@ -131,7 +132,22 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
       .run();
   }
 
-  // 8. Fan-out (email/webhook) is the worker's job — queued here when configured.
+  // 8. Fan-out to configured destinations. Flagged submissions wait for human
+  // spam review; MCP test_submit sessions are excluded per PRD §5.3.8.
+  if (verdict.status === "pass" && meta.sessionId !== "mcp_test") {
+    enqueueFanout(
+      {
+        submissionId,
+        formId: form.id,
+        formTitle: schema.title,
+        answers: result.cleanAnswers,
+        email,
+        createdAt: new Date().toISOString(),
+        embedSource: meta.embedSource,
+      },
+      schema
+    );
+  }
 
   return corsJson(
     { submissionId, behavior: schema.settings.submitBehavior ?? { type: "message", message: "Thanks — your response has been recorded." } },

@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { eq } from "drizzle-orm";
-import { getDb, forms, submissions, formEvents, partialSubmissions, formVersions } from "@fieldo/db";
+import { getDb, forms, submissions, formEvents, partialSubmissions, formVersions, destinations, destinationDeliveries } from "@fieldo/db";
+import { inArray } from "drizzle-orm";
 import { getFormById, updateDraft } from "@/lib/forms";
 
 export const dynamic = "force-dynamic";
@@ -26,6 +27,14 @@ export async function PUT(req: NextRequest, { params }: { params: { id: string }
 export async function DELETE(_req: NextRequest, { params }: { params: { id: string } }) {
   const db = getDb();
   if (!getFormById(params.id)) return NextResponse.json({ error: "Not found" }, { status: 404 });
+  const destIds = db
+    .select({ id: destinations.id })
+    .from(destinations)
+    .where(eq(destinations.formId, params.id))
+    .all()
+    .map((d) => d.id);
+  if (destIds.length) db.delete(destinationDeliveries).where(inArray(destinationDeliveries.destinationId, destIds)).run();
+  db.delete(destinations).where(eq(destinations.formId, params.id)).run();
   db.delete(submissions).where(eq(submissions.formId, params.id)).run();
   db.delete(formEvents).where(eq(formEvents.formId, params.id)).run();
   db.delete(partialSubmissions).where(eq(partialSubmissions.formId, params.id)).run();

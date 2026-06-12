@@ -43,6 +43,20 @@ CREATE TABLE IF NOT EXISTS partial_submissions (
 CREATE UNIQUE INDEX IF NOT EXISTS partials_form_session_idx ON partial_submissions (form_id, session_id);
 CREATE INDEX IF NOT EXISTS partials_resume_token_idx ON partial_submissions (resume_token);
 
+CREATE TABLE IF NOT EXISTS destinations (
+  id TEXT PRIMARY KEY, form_id TEXT NOT NULL, type TEXT NOT NULL,
+  config TEXT NOT NULL, enabled INTEGER NOT NULL DEFAULT 1, created_at INTEGER NOT NULL
+);
+CREATE INDEX IF NOT EXISTS destinations_form_idx ON destinations (form_id);
+
+CREATE TABLE IF NOT EXISTS destination_deliveries (
+  id TEXT PRIMARY KEY, destination_id TEXT NOT NULL, submission_id TEXT NOT NULL,
+  status TEXT NOT NULL, attempts INTEGER NOT NULL DEFAULT 0,
+  last_attempt_at INTEGER, error_detail TEXT, created_at INTEGER NOT NULL
+);
+CREATE INDEX IF NOT EXISTS deliveries_destination_idx ON destination_deliveries (destination_id);
+CREATE INDEX IF NOT EXISTS deliveries_submission_idx ON destination_deliveries (submission_id);
+
 CREATE TABLE IF NOT EXISTS form_events (
   id TEXT PRIMARY KEY, form_id TEXT NOT NULL, event_type TEXT NOT NULL,
   field_id TEXT, page_id TEXT, session_id TEXT NOT NULL, duration_ms INTEGER,

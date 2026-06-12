@@ -19,7 +19,7 @@ export const forms = sqliteTable(
     createdAt: integer("created_at", { mode: "timestamp_ms" }).notNull(),
     updatedAt: integer("updated_at", { mode: "timestamp_ms" }).notNull(),
   },
-  (t) => [uniqueIndex("forms_slug_idx").on(t.slug)]
+  (t) => ({ slugIdx: uniqueIndex("forms_slug_idx").on(t.slug) })
 );
 
 export const formVersions = sqliteTable(
@@ -32,7 +32,7 @@ export const formVersions = sqliteTable(
     schemaVersion: integer("schema_version").notNull(),
     publishedAt: integer("published_at", { mode: "timestamp_ms" }).notNull(),
   },
-  (t) => [uniqueIndex("form_versions_form_version_idx").on(t.formId, t.version)]
+  (t) => ({ formVersionIdx: uniqueIndex("form_versions_form_version_idx").on(t.formId, t.version) })
 );
 
 export const submissions = sqliteTable(
@@ -57,11 +57,11 @@ export const submissions = sqliteTable(
     readAt: integer("read_at", { mode: "timestamp_ms" }),
     createdAt: integer("created_at", { mode: "timestamp_ms" }).notNull(),
   },
-  (t) => [
-    index("submissions_form_created_idx").on(t.formId, t.createdAt),
-    index("submissions_form_status_idx").on(t.formId, t.status),
-    index("submissions_form_email_idx").on(t.formId, t.email),
-  ]
+  (t) => ({
+    formCreatedIdx: index("submissions_form_created_idx").on(t.formId, t.createdAt),
+    formStatusIdx: index("submissions_form_status_idx").on(t.formId, t.status),
+    formEmailIdx: index("submissions_form_email_idx").on(t.formId, t.email),
+  })
 );
 
 export const partialSubmissions = sqliteTable(
@@ -78,10 +78,42 @@ export const partialSubmissions = sqliteTable(
     createdAt: integer("created_at", { mode: "timestamp_ms" }).notNull(),
     updatedAt: integer("updated_at", { mode: "timestamp_ms" }).notNull(),
   },
-  (t) => [
-    uniqueIndex("partials_form_session_idx").on(t.formId, t.sessionId),
-    index("partials_resume_token_idx").on(t.resumeToken),
-  ]
+  (t) => ({
+    formSessionIdx: uniqueIndex("partials_form_session_idx").on(t.formId, t.sessionId),
+    resumeTokenIdx: index("partials_resume_token_idx").on(t.resumeToken),
+  })
+);
+
+export const destinations = sqliteTable(
+  "destinations",
+  {
+    id: text("id").primaryKey(),
+    formId: text("form_id").notNull(),
+    type: text("type", { enum: ["email", "webhook", "slack", "google_sheets", "notion"] }).notNull(),
+    /** type-specific: email {to, autoResponder?}, webhook {url, secret}, slack {webhookUrl} */
+    config: text("config", { mode: "json" }).notNull(),
+    enabled: integer("enabled", { mode: "boolean" }).notNull().default(true),
+    createdAt: integer("created_at", { mode: "timestamp_ms" }).notNull(),
+  },
+  (t) => ({ formIdx: index("destinations_form_idx").on(t.formId) })
+);
+
+export const destinationDeliveries = sqliteTable(
+  "destination_deliveries",
+  {
+    id: text("id").primaryKey(),
+    destinationId: text("destination_id").notNull(),
+    submissionId: text("submission_id").notNull(),
+    status: text("status", { enum: ["pending", "success", "failed", "retrying"] }).notNull(),
+    attempts: integer("attempts").notNull().default(0),
+    lastAttemptAt: integer("last_attempt_at", { mode: "timestamp_ms" }),
+    errorDetail: text("error_detail"),
+    createdAt: integer("created_at", { mode: "timestamp_ms" }).notNull(),
+  },
+  (t) => ({
+    destinationIdx: index("deliveries_destination_idx").on(t.destinationId),
+    submissionIdx: index("deliveries_submission_idx").on(t.submissionId),
+  })
 );
 
 export const formEvents = sqliteTable(
@@ -101,5 +133,5 @@ export const formEvents = sqliteTable(
     meta: text("meta", { mode: "json" }),
     createdAt: integer("created_at", { mode: "timestamp_ms" }).notNull(),
   },
-  (t) => [index("form_events_form_type_idx").on(t.formId, t.eventType)]
+  (t) => ({ formTypeIdx: index("form_events_form_type_idx").on(t.formId, t.eventType) })
 );

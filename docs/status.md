@@ -34,6 +34,14 @@ create → publish → meta/render-token → valid submit → logic-hidden-field
 - **Verified** via `node scripts/mcp-verify.mjs` (real stdio JSON-RPC client): 19/19 incl. the headline recipe create_form(NL) → publish → generate_embed_code
 - Deferred: OAuth (no auth in app yet — single-user local), AI-powered create_form (deterministic keyword heuristic for now), hosted remote endpoint
 
+## Fan-out — DONE ✅ (June 12)
+
+- **DB**: `destinations` (email|webhook|slack, json config, enabled) + `destination_deliveries` (pending|retrying|success|failed, attempts, error audit). Note: drizzle 0.36 needs record-style extraConfig (array style fails typecheck)
+- **Engine** `apps/dashboard/lib/fanout.ts` — in-process (BullMQ worker later, delivery fns are extraction-ready): per enabled destination → audit row → attempt with exponential backoff ×3 (`FANOUT_RETRY_BASE_MS`, default 5s → 25s → 125s). Webhook: HMAC `x-fieldo-signature: sha256=…` with auto-generated `whsec_` secret. Email: Resend API (`RESEND_API_KEY`, `FIELDO_EMAIL_FROM`), owner or autoResponder mode; fails with clear audit reason when key missing. Slack: incoming-webhook text post
+- Wired into submit step 8: only `pass` verdicts (flagged awaits spam review), `sessionId=mcp_test` (MCP test_submit) excluded
+- **Routes**: `GET/POST /api/forms/[id]/destinations`, `GET/PATCH/DELETE .../destinations/[did]` (GET includes last 100 deliveries). Form DELETE cascades destinations+deliveries
+- **Verified** `node scripts/fanout-verify.mjs` (needs server w/ `FANOUT_RETRY_BASE_MS=1000`): 13/13 — HMAC verifies externally, flaky endpoint succeeds on attempt 3, email-without-key audited, test-session + disabled-destination exclusions. e2e (9) + MCP (19) suites still green
+
 ## NEXT STEP
 
-1. Worker fan-out (email/webhook), AI form generation, builder UI
+1. AI form generation, builder UI

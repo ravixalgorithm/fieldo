@@ -16,6 +16,7 @@
     "@fieldo/renderer": "workspace:*",
     "@fieldo/types": "workspace:*",
     "better-sqlite3": "^12",
+    "drizzle-orm": "^0.36.0",
     "next": "14.2.21",
     "react": "18.3.1",
     "react-dom": "18.3.1",
