@@ -40,13 +40,21 @@ export default function AnalyticsPage({ params }: { params: { id: string } }) {
 
       <div className="card">
         <h3 style={{ marginTop: 0 }}>Funnel</h3>
-        <table>
-          <tbody>
-            <tr><th>Views</th><td>{data.funnel.views}</td></tr>
-            <tr><th>Starts</th><td>{data.funnel.starts} <span className="muted">({pct(data.funnel.startRate)} of views)</span></td></tr>
-            <tr><th>Completions</th><td>{data.funnel.completions} <span className="muted">({pct(data.funnel.completionRate)} of starts)</span></td></tr>
-          </tbody>
-        </table>
+        {(
+          [
+            ["Views", data.funnel.views, data.funnel.views, null],
+            ["Starts", data.funnel.starts, data.funnel.starts, `${pct(data.funnel.startRate)} of views`],
+            ["Completions", data.funnel.completions, data.funnel.completions, `${pct(data.funnel.completionRate)} of starts`],
+          ] as const
+        ).map(([label, value, ratio, note]) => (
+          <div className="funnel-row" key={label}>
+            <strong style={{ fontSize: 13 }}>{label}</strong>
+            <div className="bar"><div style={{ width: pct(data.funnel.views ? Math.min(ratio / data.funnel.views, 1) : 0) }} /></div>
+            <span className="tabular">
+              {value} {note && <span className="muted">({note})</span>}
+            </span>
+          </div>
+        ))}
       </div>
 
       <div className="card">

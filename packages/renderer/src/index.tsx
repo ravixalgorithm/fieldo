@@ -27,7 +27,7 @@ export interface FormRendererProps {
 function themeVars(theme: ThemeTokens): React.CSSProperties {
   return {
     "--fieldo-font": theme.fontFamily ?? "inherit",
-    "--fieldo-primary": theme.primaryColor ?? "#3b82f6",
+    "--fieldo-primary": theme.primaryColor ?? "#0f766e",
     "--fieldo-bg": theme.backgroundColor ?? "transparent",
     "--fieldo-text": theme.textColor ?? "#111827",
     "--fieldo-border": theme.borderColor ?? "#d1d5db",
@@ -248,7 +248,7 @@ export function FormRenderer({
   if (done) {
     return (
       <div className="fieldo-form" style={themeVars(mergedTheme)}>
-        <style>{baseCss}</style>
+        <style dangerouslySetInnerHTML={{ __html: baseCss }} />
         <div className="fieldo-success">{done}</div>
       </div>
     );
@@ -266,7 +266,7 @@ export function FormRenderer({
       }}
       noValidate
     >
-      <style>{baseCss}</style>
+      <style dangerouslySetInnerHTML={{ __html: baseCss }} />
       {pages.length > 1 && (
         <div className="fieldo-progress" aria-hidden>
           <div style={{ width: `${((pageIndex + 1) / pages.length) * 100}%` }} />

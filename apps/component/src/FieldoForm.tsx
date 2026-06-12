@@ -130,7 +130,7 @@ addPropertyControls(FieldoForm, {
   primaryColor: {
     type: ControlType.Color,
     title: "Primary",
-    defaultValue: "#3b82f6",
+    defaultValue: "#0f766e",
     hidden: (p: Props) => p.useDashboardTheme,
   },
   fontFamily: {

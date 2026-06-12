@@ -154,7 +154,7 @@ export default function FormEditorPage({ params }: { params: { id: string } }) {
       </div>
 
       {tab === "build" && (
-        <div style={{ display: "grid", gridTemplateColumns: "minmax(0,3fr) minmax(0,2fr)", gap: 16 }}>
+        <div style={{ display: "grid", gridTemplateColumns: "minmax(0,1fr) minmax(280px,340px)", gap: 16, alignItems: "start" }}>
           <Builder schema={schema} onChange={applySchema} />
           {preview}
         </div>

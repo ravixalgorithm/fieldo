@@ -67,37 +67,40 @@ export default function HomePage() {
 
   return (
     <div>
-      <div className="card">
-        <h2 style={{ marginTop: 0 }}>Create a form</h2>
-        <div className="row">
+      <div className="card create-panel">
+        <h2 style={{ marginTop: 0, marginBottom: 4 }}>Create a form</h2>
+        <p className="muted" style={{ marginTop: 0, marginBottom: 16 }}>
+          Describe it and let AI draft the fields, or start from a template.
+        </p>
+        <div className="row" style={{ flexWrap: "nowrap" }}>
           <input
             className="text"
-            style={{ maxWidth: 360 }}
-            placeholder="Form title (e.g. Contact form)"
-            value={title}
-            onChange={(e) => setTitle(e.target.value)}
-          />
-          <button className="btn" disabled={creating} onClick={() => create(true)}>
-            New from contact template
-          </button>
-          <button className="btn secondary" disabled={creating} onClick={() => create(false)}>
-            New blank form
-          </button>
-        </div>
-        <div className="row" style={{ marginTop: 10 }}>
-          <input
-            className="text"
-            style={{ maxWidth: 520 }}
-            placeholder="…or describe it: contact form asking name, work email, company size"
+            placeholder="Describe your form: contact form asking name, work email, company size"
             value={description}
             onChange={(e) => setDescription(e.target.value)}
             onKeyDown={(e) => e.key === "Enter" && generate()}
           />
-          <button className="btn" disabled={creating || !description.trim()} onClick={generate}>
-            {creating ? "Generating…" : "✨ Generate with AI"}
+          <button className="btn accent" style={{ flex: "none" }} disabled={creating || !description.trim()} onClick={generate}>
+            {creating ? "Generating…" : "Generate"}
           </button>
         </div>
         {aiError && <p className="error-text" style={{ marginTop: 8 }}>{aiError}</p>}
+        <div className="or-divider">or start manually</div>
+        <div className="row">
+          <input
+            className="text"
+            style={{ maxWidth: 320 }}
+            placeholder="Form title"
+            value={title}
+            onChange={(e) => setTitle(e.target.value)}
+          />
+          <button className="btn secondary" disabled={creating} onClick={() => create(true)}>
+            Contact template
+          </button>
+          <button className="btn secondary" disabled={creating} onClick={() => create(false)}>
+            Blank form
+          </button>
+        </div>
       </div>
 
       <div className="card">
@@ -112,10 +115,10 @@ export default function HomePage() {
             <tbody>
               {forms.map((f) => (
                 <tr key={f.id}>
-                  <td><Link href={`/forms/${f.id}`}><strong>{f.title}</strong></Link></td>
+                  <td><Link href={`/forms/${f.id}`} style={{ color: "inherit", fontWeight: 600 }}>{f.title}</Link></td>
                   <td><span className={`badge ${f.status}`}>{f.status}</span></td>
-                  <td><Link href={`/forms/${f.id}/inbox`}>{f.submissionCount} →</Link></td>
-                  <td>{f.status === "published" ? <a href={`/f/${f.slug}`} target="_blank">/f/{f.slug}</a> : <span className="muted">—</span>}</td>
+                  <td className="num"><Link href={`/forms/${f.id}/inbox`}>{f.submissionCount} →</Link></td>
+                  <td>{f.status === "published" ? <a href={`/f/${f.slug}`} target="_blank" className="muted" style={{ fontFamily: "ui-monospace, monospace", fontSize: 12 }}>/f/{f.slug}</a> : <span className="muted">—</span>}</td>
                 </tr>
               ))}
             </tbody>

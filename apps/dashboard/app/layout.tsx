@@ -1,6 +1,9 @@
 import type { Metadata } from "next";
-import Link from "next/link";
+import { Space_Grotesk, Instrument_Sans } from "next/font/google";
 import "./globals.css";
+
+const grotesk = Space_Grotesk({ subsets: ["latin"], variable: "--font-grotesk", display: "swap" });
+const instrument = Instrument_Sans({ subsets: ["latin"], variable: "--font-instrument", display: "swap" });
 
 export const metadata: Metadata = {
   title: "Fieldo",
@@ -9,14 +12,8 @@ export const metadata: Metadata = {
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="en">
-      <body>
-        <header className="topbar">
-          <Link href="/" className="brand">⬚ Fieldo</Link>
-          <span className="tagline">Forms with an inbox. Native rendering. No iframe.</span>
-        </header>
-        <main className="main">{children}</main>
-      </body>
+    <html lang="en" className={`${grotesk.variable} ${instrument.variable}`}>
+      <body>{children}</body>
     </html>
   );
 }

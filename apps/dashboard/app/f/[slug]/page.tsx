@@ -22,27 +22,31 @@ export default function HostedFormPage({
   const published = getPublishedSchema(form);
   if (!published || form.status !== "published") {
     return (
-      <div style={{ maxWidth: 560, margin: "80px auto", fontFamily: "system-ui", textAlign: "center" }}>
-        <h2>This form is not available</h2>
-        <p style={{ color: "#6b7280" }}>It may be unpublished or closed.</p>
+      <div className="hosted-wrap" style={{ justifyContent: "center", textAlign: "center" }}>
+        <div>
+          <h2>This form is not available</h2>
+          <p className="muted">It may be unpublished or closed.</p>
+        </div>
       </div>
     );
   }
   const embed = searchParams.embed === "1";
+  if (embed) {
+    return (
+      <div style={{ padding: 4 }}>
+        <HostedForm schema={published.schema} formId={form.id} renderToken={issueRenderToken(form.id)} embedSource="iframe" />
+      </div>
+    );
+  }
   return (
-    <div style={{ maxWidth: 640, margin: embed ? "0" : "48px auto", padding: 24, fontFamily: "system-ui" }}>
-      {!embed && <h1 style={{ fontSize: 24 }}>{published.schema.title}</h1>}
-      <HostedForm
-        schema={published.schema}
-        formId={form.id}
-        renderToken={issueRenderToken(form.id)}
-        embedSource={embed ? "iframe" : "hosted"}
-      />
-      {!embed && (
-        <p style={{ marginTop: 32, fontSize: 12, color: "#9ca3af" }}>
-          Powered by <a href="/" style={{ color: "#6b7280" }}>Fieldo</a>
-        </p>
-      )}
+    <div className="hosted-wrap">
+      <div className="hosted-card">
+        <h1 style={{ fontSize: 23, marginTop: 0, marginBottom: 22 }}>{published.schema.title}</h1>
+        <HostedForm schema={published.schema} formId={form.id} renderToken={issueRenderToken(form.id)} embedSource="hosted" />
+      </div>
+      <p className="hosted-footer">
+        Powered by <a href="/">Fieldo</a>
+      </p>
     </div>
   );
 }

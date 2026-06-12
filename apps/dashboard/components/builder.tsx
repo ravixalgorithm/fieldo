@@ -133,11 +133,11 @@ export function Builder({
       <div className="card builder-canvas">
         <div className="row" style={{ justifyContent: "space-between", marginBottom: 10 }}>
           <strong>Fields</strong>
-          <div className="row" style={{ gap: 4 }}>
+          <div className="page-tabs">
             {schema.pages.map((p, i) => (
               <button
                 key={p.id}
-                className={`btn small ${i === pageIndex ? "" : "secondary"}`}
+                className={i === pageIndex ? "current" : ""}
                 onClick={() => {
                   setPageIndex(i);
                   setSelectedId(null);
@@ -146,13 +146,13 @@ export function Builder({
                 Page {i + 1}
               </button>
             ))}
-            <button className="btn secondary small" onClick={addPage} title="Add page">+</button>
+            <button onClick={addPage} title="Add page">+</button>
             {schema.pages.length > 1 && (
-              <button className="btn secondary small" onClick={() => removePage(pageIndex)} title="Delete this page">🗑</button>
+              <button onClick={() => removePage(pageIndex)} title="Delete this page">✕</button>
             )}
           </div>
         </div>
-        {page.fields.length === 0 && <p className="muted">No fields yet — add one from the palette.</p>}
+        {page.fields.length === 0 && <p className="empty-state">No fields yet — add one from the palette.</p>}
         <ul className="field-list">
           {page.fields.map((f) => (
             <li
@@ -189,7 +189,7 @@ export function Builder({
       <div className="card builder-props">
         <strong>Field settings</strong>
         {!selected ? (
-          <p className="muted">Select a field to edit it.</p>
+          <p className="empty-state">Select a field in the list to edit its label, options, and validation.</p>
         ) : (
           <div className="props-form" key={selected.id}>
             <label>
@@ -279,7 +279,7 @@ export function ThemeEditor({
   );
   return (
     <div className="props-form" style={{ maxWidth: 420 }}>
-      {color("primaryColor", "Primary", "#3b82f6")}
+      {color("primaryColor", "Primary", "#0f766e")}
       {color("backgroundColor", "Background", "#ffffff")}
       {color("textColor", "Text", "#111827")}
       {color("borderColor", "Border", "#d1d5db")}

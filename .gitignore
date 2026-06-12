@@ -14,3 +14,4 @@ coverage/
 
 # build artifacts
 apps/component/dist/
+.gstack/
