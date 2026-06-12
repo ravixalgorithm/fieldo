@@ -4,7 +4,7 @@
   "private": true,
   "scripts": {
     "dev": "next dev -p 3210",
-    "build": "next build",
+    "build": "tsx scripts/seed-demo.ts && next build",
     "start": "next start -p 3210",
     "typecheck": "tsc --noEmit",
     "build:embed": "node build-embed.mjs",

@@ -4,6 +4,9 @@ import { findUserByEmail, verifyPassword, setSessionCookie } from "@/lib/auth";
 export const dynamic = "force-dynamic";
 
 export async function POST(req: NextRequest) {
+  const { ensureDemoSeeded } = await import("@/lib/ensure-demo-seed");
+  ensureDemoSeeded();
+
   const body = await req.json().catch(() => null);
   const email = typeof body?.email === "string" ? body.email : "";
   const password = typeof body?.password === "string" ? body.password : "";

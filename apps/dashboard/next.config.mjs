@@ -3,6 +3,9 @@ const nextConfig = {
   transpilePackages: ["@fieldo/types", "@fieldo/form-core", "@fieldo/renderer", "@fieldo/db"],
   experimental: {
     serverComponentsExternalPackages: ["better-sqlite3"],
+    outputFileTracingIncludes: {
+      "/**": ["./.data/fieldo.db"],
+    },
   },
   webpack: (config, { isServer }) => {
     if (isServer) {

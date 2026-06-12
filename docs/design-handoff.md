@@ -60,6 +60,12 @@ pnpm --filter @fieldo/dashboard seed:demo
 pnpm --filter @fieldo/dashboard dev
 ```
 
-On Vercel after deploy, run the seed once (locally against production DB, or via a one-off script) so mock data appears. Set `FIELDO_DB_PATH` if the SQLite file lives elsewhere, and `NEXT_PUBLIC_APP_URL` to your production URL so code samples in developer docs show the correct origin.
+On Vercel after deploy, the **build step runs `seed:demo` automatically** — no manual seed needed. Optional env vars:
 
-**Do not use demo credentials in production.**
+| Variable | Purpose |
+|----------|---------|
+| `FIELDO_AUTH_SECRET` | Session signing secret (set a random string in production) |
+| `NEXT_PUBLIC_APP_URL` | Your Vercel URL — used in developer docs code samples |
+| `FIELDO_DB_PATH` | Override SQLite path (default: `/tmp/fieldo.db` on Vercel) |
+
+**Do not use demo credentials in production** beyond design previews.

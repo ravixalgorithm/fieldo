@@ -91,9 +91,26 @@ CREATE INDEX IF NOT EXISTS form_events_form_type_idx ON form_events (form_id, ev
 
 let _db: Db | null = null;
 
+function resolveDbPath(): string {
+  if (process.env.FIELDO_DB_PATH) return process.env.FIELDO_DB_PATH;
+  // Vercel lambdas only persist writes under /tmp; project dir is read-only.
+  if (process.env.VERCEL) return "/tmp/fieldo.db";
+  return path.join(process.cwd(), ".data", "fieldo.db");
+}
+
+/** Copy the build-time seeded SQLite file into /tmp on first cold start. */
+function hydrateDbFromBundle(target: string) {
+  if (fs.existsSync(target)) return;
+  const bundled = path.join(process.cwd(), ".data", "fieldo.db");
+  if (!fs.existsSync(bundled)) return;
+  fs.mkdirSync(path.dirname(target), { recursive: true });
+  fs.copyFileSync(bundled, target);
+}
+
 export function getDb(): Db {
   if (_db) return _db;
-  const file = process.env.FIELDO_DB_PATH ?? path.join(process.cwd(), ".data", "fieldo.db");
+  const file = resolveDbPath();
+  hydrateDbFromBundle(file);
   fs.mkdirSync(path.dirname(file), { recursive: true });
   const sqlite = new Database(file);
   sqlite.pragma("journal_mode = WAL");
