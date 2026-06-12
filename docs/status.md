@@ -19,8 +19,15 @@ The earlier create-form failure was Next/webpack bundling better-sqlite3 (`bindi
 Full e2e suite in `scripts/e2e-verify.sh` (run with dev server up: `bash scripts/e2e-verify.sh`) — all pass:
 create → publish → meta/render-token → valid submit → logic-hidden-field injection stripped server-side → 422 on missing required → honeypot silent reject (fake 200, stored `rejected`) → dedupe-by-email 409 → stored statuses/email correct → analytics 200.
 
+## Phase 3 embeds — DONE ✅ (June 12)
+
+- **packages/react** (`@fieldo/react`) — `<FieldoForm id apiBaseUrl theme onSubmitted />`: fetches `/meta?supportedSchema=1`, renders shared `<FormRenderer>`; exports `fetchFormMeta`, re-exports `FormRenderer`
+- **apps/component** — Framer code component `src/FieldoForm.tsx`: property controls (formId, dashboard-vs-custom theme with per-token overrides, advanced apiBaseUrl), `RenderTarget.canvas` → skeleton/no-tracking, live → full renderer, embedSource="framer". `pnpm build` (esbuild, ESM, externals react/framer) → dist 19.9 KB gz (budget 150). Typechecks (framer module shimmed in `src/framer.d.ts`)
+- **embed.js** — `apps/dashboard/embed/embed.tsx` → `pnpm build:embed` → `public/embed.js` (IIFE, React inlined, 64.7 KB gz). `<script src=".../embed.js" data-form="frm_…" [data-api=origin]>` injects form after the script tag, embedSource="html"
+- **Verified in a real headless browser**: embed.js on a foreign-origin page (port 8077) rendered, submitted, success message shown; stored submission status=complete, embedSource=html, spamScore=0. Test page: `scripts/embed-test/index.html` (form id hardcoded — recreate if DB reset)
+- Not done from Phase 3: Marketplace submission (needs real Framer project), OG image gen, postMessage auto-height for iframe embed
+
 ## NEXT STEP
 
-1. Framer component (`apps/component/FieldoForm.tsx`) + `embed.js` + `@fieldo/react`
-2. MCP server (28 tools per PRD §5.3.8) + OAuth/auth port from FrameVid
-3. Worker fan-out (email/webhook), AI form generation, builder UI
+1. MCP server (28 tools per PRD §5.3.8) + OAuth/auth port from FrameVid
+2. Worker fan-out (email/webhook), AI form generation, builder UI

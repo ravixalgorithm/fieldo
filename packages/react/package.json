@@ -1,11 +1,12 @@
 {
-  "name": "@fieldo/renderer",
+  "name": "@fieldo/react",
   "version": "0.0.1",
   "private": true,
   "main": "./src/index.tsx",
   "types": "./src/index.tsx",
   "dependencies": {
     "@fieldo/form-core": "workspace:*",
+    "@fieldo/renderer": "workspace:*",
     "@fieldo/types": "workspace:*"
   },
   "peerDependencies": {

@@ -1,0 +1,23 @@
+{
+  "name": "@fieldo/component",
+  "version": "0.0.1",
+  "private": true,
+  "scripts": {
+    "build": "node build.mjs",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@fieldo/form-core": "workspace:*",
+    "@fieldo/react": "workspace:*",
+    "@fieldo/renderer": "workspace:*",
+    "@fieldo/types": "workspace:*"
+  },
+  "devDependencies": {
+    "@types/react": "^18",
+    "esbuild": "^0.24.0",
+    "typescript": "^5.6.0"
+  },
+  "peerDependencies": {
+    "react": ">=18"
+  }
+}

@@ -11,3 +11,6 @@ coverage/
 
 # local sqlite
 .data/
+
+# build artifacts
+apps/component/dist/
