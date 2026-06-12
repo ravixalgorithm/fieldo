@@ -28,6 +28,7 @@ packages/
 - `docs/prd.md` — current product spec (plan + founder feature doc merged, v1/v1.1/v2 slotting)
 - `docs/plan-v1.md` — original full plan (June 11, 2026, research-verified)
 - `docs/status.md` — build status
+- `docs/design-handoff.md` — demo login + seed script for design reviews
 - `docs/JOURNEY.md` — session log
 
 Seeded architecturally from FrameVid/Seelo (`~/github/FramerVid`) — auth, OAuth, MCP framework, analytics pipeline patterns port from there.

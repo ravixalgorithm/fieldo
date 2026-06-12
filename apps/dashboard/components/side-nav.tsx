@@ -3,24 +3,96 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 
-const ITEMS = [
-  { label: "Dashboard", href: "/", icon: "◧" },
-  { label: "Forms", href: "/forms", icon: "▤" },
-] as const;
+type NavItem = {
+  label: string;
+  href: string;
+  icon: string;
+  external?: boolean;
+  badge?: number;
+};
 
-export function SideNav() {
-  const pathname = usePathname() ?? "/";
+type NavGroup = {
+  title: string;
+  items: NavItem[];
+};
+
+function NavLink({ item, active }: { item: NavItem; active: boolean }) {
+  const body = (
+    <>
+      <span className="nav-icon">{item.icon}</span>
+      <span className="nav-label">{item.label}</span>
+      {item.badge != null && item.badge > 0 ? (
+        <span className="nav-badge">{item.badge > 99 ? "99+" : item.badge}</span>
+      ) : null}
+    </>
+  );
+
+  if (item.external) {
+    return (
+      <a href={item.href} target="_blank" rel="noreferrer" className={active ? "active" : ""}>
+        {body}
+      </a>
+    );
+  }
+
   return (
-    <nav className="side-nav">
-      {ITEMS.map(({ label, href, icon }) => {
-        const active = href === "/" ? pathname === "/" : pathname.startsWith(href);
-        return (
-          <Link key={href} href={href} className={active ? "active" : ""} aria-current={active ? "page" : undefined}>
-            <span className="nav-icon">{icon}</span>
-            {label}
-          </Link>
-        );
-      })}
+    <Link href={item.href} className={active ? "active" : ""} aria-current={active ? "page" : undefined}>
+      {body}
+    </Link>
+  );
+}
+
+export function SideNav({ inboxBadge = 0 }: { inboxBadge?: number }) {
+  const pathname = usePathname() ?? "/";
+
+  const isActive = (href: string) => {
+    if (href === "/") return pathname === "/";
+    if (href === "/developers") return pathname === "/developers";
+    return pathname === href || pathname.startsWith(`${href}/`);
+  };
+
+  const groups: NavGroup[] = [
+    {
+      title: "Primary",
+      items: [
+        { label: "Overview", href: "/", icon: "◧" },
+        { label: "Forms", href: "/forms", icon: "▤" },
+        { label: "Inbox", href: "/forms", icon: "▣", badge: inboxBadge },
+      ],
+    },
+    {
+      title: "Workspace",
+      items: [
+        { label: "Destinations", href: "/forms", icon: "⇢" },
+        { label: "API Keys", href: "/settings", icon: "⌁" },
+      ],
+    },
+    {
+      title: "Developers",
+      items: [
+        { label: "Overview", href: "/developers", icon: "◧" },
+        { label: "MCP Server", href: "/developers/mcp-server", icon: "⌬" },
+        { label: "MCP Tools", href: "/developers/tools", icon: "⚒" },
+        { label: "REST API", href: "/developers/rest-api", icon: "⇄" },
+        { label: "Embeds", href: "/developers/embeds", icon: "▤" },
+      ],
+    },
+    {
+      title: "Admin",
+      items: [{ label: "Settings", href: "/settings", icon: "⚙" }],
+    },
+  ];
+
+  return (
+    <nav className="side-nav enterprise-nav">
+      {groups.map((group) => (
+        <div key={group.title} className="nav-group">
+          <div className="nav-group-title">{group.title}</div>
+          {group.items.map((item) => (
+            <NavLink key={`${group.title}-${item.label}`} item={item} active={isActive(item.href)} />
+          ))}
+        </div>
+      ))}
     </nav>
   );
 }

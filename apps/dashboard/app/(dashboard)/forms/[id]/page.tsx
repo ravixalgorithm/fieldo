@@ -31,8 +31,12 @@ export default function FormEditorPage({ params }: { params: { id: string } }) {
   useEffect(() => {
     setOrigin(window.location.origin);
     void fetch(`/api/forms/${params.id}`)
-      .then((r) => r.json())
-      .then((d) => {
+      .then(async (r) => {
+        const d = await r.json();
+        if (!r.ok) {
+          setErrorMsg(d.error ?? "Form not found");
+          return;
+        }
         if (d.form) {
           setForm(d.form);
           setSchema(d.form.draftSchema);
@@ -109,14 +113,25 @@ export default function FormEditorPage({ params }: { params: { id: string } }) {
     }
   };
 
+  if (errorMsg && !form) {
+    return (
+      <div className="form-editor-page">
+        <p className="error-text">{errorMsg}</p>
+        <Link href="/forms" className="btn secondary" style={{ marginTop: 12 }}>
+          Back to forms
+        </Link>
+      </div>
+    );
+  }
+
   if (!form || !schema) return <p className="muted">Loading…</p>;
 
   const hostedUrl = `${origin}/f/${form.slug}`;
   const preview = (
-    <div className="card">
+    <div className="card form-preview-card">
       <strong>Live preview</strong>
-      <div style={{ marginTop: 14 }}>
-        {schema.pages ? (
+      <div className="form-preview-body">
+        {schema.pages?.length ? (
           <FormRenderer key={JSON.stringify(schema)} schema={schema} formId={form.id} mode="preview" />
         ) : (
           <p className="error-text">Schema has no pages.</p>
@@ -126,26 +141,41 @@ export default function FormEditorPage({ params }: { params: { id: string } }) {
   );
 
   return (
-    <div>
-      <div className="row" style={{ justifyContent: "space-between", marginBottom: 16 }}>
-        <div className="row">
-          <h2 style={{ margin: 0 }}>{form.title}</h2>
+    <div className="form-editor-page">
+      <div className="form-editor-toolbar">
+        <div className="form-editor-title-row">
+          <input
+            className="form-title-input"
+            value={schema.title}
+            aria-label="Form title"
+            onChange={(e) => applySchema({ ...schema, title: e.target.value })}
+          />
           <span className={`badge ${form.status}`}>{form.status}</span>
         </div>
-        <div className="row">
-          <Link className="btn secondary small" href={`/forms/${form.id}/inbox`}>Inbox ({form.submissionCount})</Link>
-          <Link className="btn secondary small" href={`/forms/${form.id}/analytics`}>Analytics</Link>
-          {form.status === "published" && <a className="btn secondary small" href={hostedUrl} target="_blank">View live ↗</a>}
-          <button className="btn secondary small" onClick={save} disabled={saveState === "saving"}>
+        <div className="row form-editor-actions">
+          <Link className="btn secondary small" href={`/forms/${form.id}/inbox`}>
+            Inbox ({form.submissionCount})
+          </Link>
+          <Link className="btn secondary small" href={`/forms/${form.id}/analytics`}>
+            Analytics
+          </Link>
+          {form.status === "published" && (
+            <a className="btn secondary small" href={hostedUrl} target="_blank" rel="noreferrer">
+              View live ↗
+            </a>
+          )}
+          <button className="btn secondary small" onClick={() => void save()} disabled={saveState === "saving"}>
             {saveState === "saving" ? "Saving…" : saveState === "saved" ? "Saved ✓" : "Save draft"}
           </button>
-          <button className="btn small" onClick={publish}>Publish</button>
+          <button className="btn small" onClick={() => void publish()}>
+            Publish
+          </button>
         </div>
       </div>
 
       {errorMsg && <div className="error-text" style={{ marginBottom: 8 }}>{errorMsg}</div>}
 
-      <div className="tabs">
+      <div className="tabs form-editor-tabs">
         {(["build", "json", "theme", "settings", "share"] as Tab[]).map((t) => (
           <button key={t} className={tab === t ? "active" : ""} onClick={() => setTab(t)}>
             {t === "build" ? "Build" : t === "json" ? "JSON" : t === "theme" ? "Theme" : t === "settings" ? "Settings" : "Share & embed"}
@@ -154,14 +184,14 @@ export default function FormEditorPage({ params }: { params: { id: string } }) {
       </div>
 
       {tab === "build" && (
-        <div style={{ display: "grid", gridTemplateColumns: "minmax(0,1fr) minmax(280px,340px)", gap: 16, alignItems: "start" }}>
+        <div className="form-editor-build">
           <Builder schema={schema} onChange={applySchema} />
           {preview}
         </div>
       )}
 
       {tab === "json" && (
-        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16 }}>
+        <div className="form-editor-split">
           <div className="card">
             <strong>Schema (FormSchemaV1)</strong>
             <textarea className="code" value={json} onChange={(e) => applyJson(e.target.value)} spellCheck={false} style={{ marginTop: 10 }} />
@@ -171,7 +201,7 @@ export default function FormEditorPage({ params }: { params: { id: string } }) {
       )}
 
       {tab === "theme" && (
-        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16 }}>
+        <div className="form-editor-split">
           <div className="card">
             <strong>Theme</strong>
             <div style={{ marginTop: 10 }}>

@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { SignOutButton } from "@/components/sign-out-button";
 
 interface KeyRow {
   id: string;
@@ -53,13 +54,18 @@ export default function SettingsPage() {
       <div className="card">
         <h3 style={{ marginTop: 0 }}>Profile</h3>
         {me ? (
-          <table style={{ maxWidth: 480 }}>
-            <tbody>
-              <tr><th>Name</th><td>{me.user.name ?? "—"}</td></tr>
-              <tr><th>Email</th><td>{me.user.email}</td></tr>
-              <tr><th>Workspace</th><td>{me.workspace.name}</td></tr>
-            </tbody>
-          </table>
+          <>
+            <table style={{ maxWidth: 480 }}>
+              <tbody>
+                <tr><th>Name</th><td>{me.user.name ?? "—"}</td></tr>
+                <tr><th>Email</th><td>{me.user.email}</td></tr>
+                <tr><th>Workspace</th><td>{me.workspace.name}</td></tr>
+              </tbody>
+            </table>
+            <div style={{ marginTop: 16 }}>
+              <SignOutButton className="btn secondary" />
+            </div>
+          </>
         ) : (
           <p className="empty-state">Loading…</p>
         )}

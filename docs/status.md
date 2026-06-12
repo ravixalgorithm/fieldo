@@ -50,8 +50,8 @@ create → publish → meta/render-token → valid submit → logic-hidden-field
 
 ## Developer docs site — DONE ✅ (June 12)
 
-- **apps/developers** (`@fieldo/developers`, port **3211**, `pnpm dev`) — FramerVid/Seelo-pattern docs shell (sidebar + rounded reading pane, same Fieldo tokens/fonts). Pages: Overview (quickstart, surfaces, architecture), MCP Server (Claude Code + Claude Desktop setup, config, safety model), MCP Tools (all 31 documented w/ scopes), REST API (public v1 + management endpoints, webhook HMAC verification, spam-score table), Embeds (all 5 surfaces w/ snippets)
-- Dashboard sidebar links to it ("Developers ↗")
+- **apps/developers** (`@fieldo/developers`, port **3211**) — standalone docs app (legacy); **developer docs now live in the dashboard at `/developers/*`** for single-deploy handoffs
+- Dashboard sidebar links to `/developers` (Overview, MCP Server, Tools, REST API, Embeds)
 
 ## Auth + multi-tenancy — DONE ✅ (June 12)
 
