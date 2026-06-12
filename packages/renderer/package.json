@@ -1,0 +1,15 @@
+{
+  "name": "@fieldo/renderer",
+  "version": "0.0.1",
+  "private": true,
+  "main": "./src/index.tsx",
+  "types": "./src/index.tsx",
+  "dependencies": {
+    "@fieldo/form-core": "workspace:*",
+    "@fieldo/types": "workspace:*"
+  },
+  "peerDependencies": {
+    "react": ">=18",
+    "react-dom": ">=18"
+  }
+}
