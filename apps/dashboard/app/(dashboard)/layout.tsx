@@ -25,8 +25,16 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
           <div className="sidebar-divider" />
           <SideNav />
         </div>
-        <div className="side-foot">
-          <span>Local workspace</span>
+        <div>
+          <nav className="side-nav" style={{ marginBottom: 10 }}>
+            <a href="http://localhost:3211" target="_blank" rel="noreferrer">
+              <span className="nav-icon">⌬</span>
+              Developers ↗
+            </a>
+          </nav>
+          <div className="side-foot">
+            <span>Local workspace</span>
+          </div>
         </div>
       </aside>
       <div className="content-area">

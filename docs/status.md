@@ -48,6 +48,11 @@ create → publish → meta/render-token → valid submit → logic-hidden-field
 - **Builder UI** (`components/builder.tsx` + rewritten `app/forms/[id]/page.tsx`): tabs Build | JSON | Theme | Settings | Share. Build = palette (15 field types) → drag-reorderable field list (HTML5 DnD) → property panel (label/placeholder/help/required/options/hiddenSource); multi-page add/remove. Theme = color pickers + tokens. Settings = submit behavior, dedupe, time-trap, maxResponses, allowedOrigins. Schema object is single source of truth; JSON tab and live preview stay in sync. Home page got an "✨ Generate with AI" box
 - **Verified in a real browser**: NL description → generated form landed in builder → renamed field, added phone → publish → hosted page reflected edits → live submit stored complete with all answers (incl. rating). All suites green: e2e 9, MCP 19, fanout 13
 
+## Developer docs site — DONE ✅ (June 12)
+
+- **apps/developers** (`@fieldo/developers`, port **3211**, `pnpm dev`) — FramerVid/Seelo-pattern docs shell (sidebar + rounded reading pane, same Fieldo tokens/fonts). Pages: Overview (quickstart, surfaces, architecture), MCP Server (Claude Code + Claude Desktop setup, config, safety model), MCP Tools (all 31 documented w/ scopes), REST API (public v1 + management endpoints, webhook HMAC verification, spam-score table), Embeds (all 5 surfaces w/ snippets)
+- Dashboard sidebar links to it ("Developers ↗")
+
 ## NEXT STEP (post-v1 / hardening)
 
 1. Auth (multi-user), Postgres + Redis swap, BullMQ worker extraction
