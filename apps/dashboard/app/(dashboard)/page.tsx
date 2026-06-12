@@ -3,32 +3,31 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
+import { contactTemplate, FormsTable, type FormRow } from "@/components/forms-table";
 
-interface FormRow {
-  id: string;
-  title: string;
-  slug: string;
-  status: string;
-  submissionCount: number;
-  updatedAt: number;
-}
+const RECENT_LIMIT = 5;
 
 export default function HomePage() {
   const [forms, setForms] = useState<FormRow[]>([]);
-  const [title, setTitle] = useState("");
+  const [loaded, setLoaded] = useState(false);
   const [description, setDescription] = useState("");
   const [creating, setCreating] = useState(false);
   const [aiError, setAiError] = useState("");
   const router = useRouter();
 
   useEffect(() => {
-    void fetch("/api/forms").then((r) => r.json()).then((d) => setForms(d.forms ?? []));
+    void fetch("/api/forms")
+      .then((r) => r.json())
+      .then((d) => {
+        setForms(d.forms ?? []);
+        setLoaded(true);
+      });
   }, []);
 
   const create = async (useTemplate: boolean) => {
     setCreating(true);
-    const body: Record<string, unknown> = { title: title || "Untitled form" };
-    if (useTemplate) body.schema = contactTemplate(title || "Contact form");
+    const body: Record<string, unknown> = { title: useTemplate ? "Contact form" : "Untitled form" };
+    if (useTemplate) body.schema = contactTemplate("Contact form");
     const res = await fetch("/api/forms", {
       method: "POST",
       headers: { "content-type": "application/json" },
@@ -46,7 +45,7 @@ export default function HomePage() {
     const gen = await fetch("/api/ai/generate-form", {
       method: "POST",
       headers: { "content-type": "application/json" },
-      body: JSON.stringify({ description, title: title || undefined }),
+      body: JSON.stringify({ description }),
     });
     const g = await gen.json();
     if (!gen.ok) {
@@ -65,17 +64,31 @@ export default function HomePage() {
     else setAiError(d.error ?? "Create failed");
   };
 
+  const recent = forms.slice(0, RECENT_LIMIT);
+
   return (
     <div>
+      <div className="page-head">
+        <h2>Dashboard</h2>
+        <div className="row">
+          <button className="btn secondary" disabled={creating} onClick={() => create(true)}>
+            Contact template
+          </button>
+          <button className="btn" disabled={creating} onClick={() => create(false)}>
+            + New form
+          </button>
+        </div>
+      </div>
+
       <div className="card create-panel">
-        <h2 style={{ marginTop: 0, marginBottom: 4 }}>Create a form</h2>
-        <p className="muted" style={{ marginTop: 0, marginBottom: 16 }}>
-          Describe it and let AI draft the fields, or start from a template.
+        <h3 style={{ marginTop: 0, marginBottom: 4 }}>Start with AI</h3>
+        <p className="muted" style={{ marginTop: 0, marginBottom: 14 }}>
+          Describe the form and AI drafts the fields, pages, and logic for you.
         </p>
         <div className="row" style={{ flexWrap: "nowrap" }}>
           <input
             className="text"
-            placeholder="Describe your form: contact form asking name, work email, company size"
+            placeholder="A contact form asking name, work email, company size"
             value={description}
             onChange={(e) => setDescription(e.target.value)}
             onKeyDown={(e) => e.key === "Enter" && generate()}
@@ -85,77 +98,25 @@ export default function HomePage() {
           </button>
         </div>
         {aiError && <p className="error-text" style={{ marginTop: 8 }}>{aiError}</p>}
-        <div className="or-divider">or start manually</div>
-        <div className="row">
-          <input
-            className="text"
-            style={{ maxWidth: 320 }}
-            placeholder="Form title"
-            value={title}
-            onChange={(e) => setTitle(e.target.value)}
-          />
-          <button className="btn secondary" disabled={creating} onClick={() => create(true)}>
-            Contact template
-          </button>
-          <button className="btn secondary" disabled={creating} onClick={() => create(false)}>
-            Blank form
-          </button>
-        </div>
       </div>
 
       <div className="card">
-        <h2 style={{ marginTop: 0 }}>Your forms</h2>
-        {forms.length === 0 ? (
-          <p className="muted">No forms yet — create one above.</p>
+        <div className="row" style={{ justifyContent: "space-between", marginBottom: 6 }}>
+          <h3 style={{ margin: 0 }}>Recent forms</h3>
+          {forms.length > RECENT_LIMIT && (
+            <Link href="/forms" className="muted" style={{ fontWeight: 600 }}>
+              View all {forms.length} forms →
+            </Link>
+          )}
+        </div>
+        {!loaded ? (
+          <p className="empty-state">Loading…</p>
+        ) : recent.length === 0 ? (
+          <p className="empty-state">No forms yet — create your first one above.</p>
         ) : (
-          <table>
-            <thead>
-              <tr><th>Title</th><th>Status</th><th>Submissions</th><th>Link</th></tr>
-            </thead>
-            <tbody>
-              {forms.map((f) => (
-                <tr key={f.id}>
-                  <td><Link href={`/forms/${f.id}`} style={{ color: "inherit", fontWeight: 600 }}>{f.title}</Link></td>
-                  <td><span className={`badge ${f.status}`}>{f.status}</span></td>
-                  <td className="num"><Link href={`/forms/${f.id}/inbox`}>{f.submissionCount} →</Link></td>
-                  <td>{f.status === "published" ? <a href={`/f/${f.slug}`} target="_blank" className="muted" style={{ fontFamily: "ui-monospace, monospace", fontSize: 12 }}>/f/{f.slug}</a> : <span className="muted">—</span>}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
+          <FormsTable forms={recent} />
         )}
       </div>
     </div>
   );
-}
-
-function contactTemplate(title: string) {
-  return {
-    schemaVersion: 1,
-    title,
-    pages: [
-      {
-        id: "page_1",
-        fields: [
-          { id: "name", type: "text", label: "Full name", placeholder: "Jane Smith", required: true },
-          { id: "email", type: "email", label: "Work email", placeholder: "jane@company.com", required: true },
-          {
-            id: "company_size",
-            type: "select",
-            label: "Company size",
-            options: [
-              { label: "1–10", value: "1-10" },
-              { label: "11–50", value: "11-50" },
-              { label: "51–200", value: "51-200" },
-              { label: "200+", value: "200+" },
-            ],
-          },
-          { id: "message", type: "textarea", label: "What are you building?", placeholder: "Tell us a little about your project…" },
-        ],
-      },
-    ],
-    logic: [],
-    theme: {},
-    settings: { submitBehavior: { type: "message", message: "Thanks — we'll be in touch shortly." } },
-  };
 }
