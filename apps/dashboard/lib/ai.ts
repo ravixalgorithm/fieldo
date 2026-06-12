@@ -1,9 +1,11 @@
 /**
  * AI form generation (PRD §5.3.8 create_form NL path).
- * Claude (claude-opus-4-8) with a structured-output JSON schema produces a
- * FormSchemaV1; the result is re-validated by parseFormSchema (logic lint
- * included). Without ANTHROPIC_API_KEY we fall back to the deterministic
- * keyword heuristic so local dev and tests never need a key.
+ * Primary provider is Grok (xAI, `XAI_API_KEY`, model via `XAI_MODEL`,
+ * default grok-4-fast) — cheap structured-output generation. Claude
+ * (`ANTHROPIC_API_KEY`) is the secondary provider; with no key at all we
+ * fall back to the deterministic keyword heuristic so local dev and tests
+ * never need one. Every provider's output is re-validated by
+ * parseFormSchema (logic lint included) before it can be saved.
  */
 import Anthropic from "@anthropic-ai/sdk";
 import { parseFormSchema, schemaFromDescription } from "@fieldo/form-core";
@@ -119,13 +121,47 @@ Rules:
 
 export interface GeneratedForm {
   schema: FormSchemaV1;
-  source: "ai" | "heuristic";
+  source: "grok" | "claude" | "heuristic";
 }
 
-export async function generateFormSchema(description: string, title?: string): Promise<GeneratedForm> {
-  if (!process.env.ANTHROPIC_API_KEY) {
-    return { schema: schemaFromDescription(description, title), source: "heuristic" };
-  }
+/** Fill defaults the model omits, then validate hard (logic lint included). */
+function finalize(raw: unknown, title: string | undefined, source: GeneratedForm["source"]): GeneratedForm {
+  const schema = parseFormSchema({ theme: {}, settings: {}, ...(raw as object), ...(title ? { title } : {}) });
+  return { schema, source };
+}
+
+const userPrompt = (description: string, title?: string) =>
+  `Description: ${description}${title ? `\nRequested title: ${title}` : ""}`;
+
+/** Grok (xAI) — OpenAI-compatible chat completions with structured output. */
+async function generateWithGrok(description: string, title?: string): Promise<GeneratedForm> {
+  const res = await fetch(`${process.env.XAI_BASE_URL ?? "https://api.x.ai"}/v1/chat/completions`, {
+    method: "POST",
+    headers: {
+      "content-type": "application/json",
+      authorization: `Bearer ${process.env.XAI_API_KEY}`,
+    },
+    body: JSON.stringify({
+      model: process.env.XAI_MODEL ?? "grok-4-fast",
+      messages: [
+        { role: "system", content: SYSTEM },
+        { role: "user", content: userPrompt(description, title) },
+      ],
+      response_format: {
+        type: "json_schema",
+        json_schema: { name: "form_schema_v1", schema: OUTPUT_SCHEMA },
+      },
+    }),
+    signal: AbortSignal.timeout(60_000),
+  });
+  if (!res.ok) throw new Error(`Grok API ${res.status}: ${(await res.text()).slice(0, 300)}`);
+  const data = await res.json();
+  const content = data.choices?.[0]?.message?.content;
+  if (typeof content !== "string" || !content.trim()) throw new Error("Grok returned no schema");
+  return finalize(JSON.parse(content), title, "grok");
+}
+
+async function generateWithClaude(description: string, title?: string): Promise<GeneratedForm> {
   const client = new Anthropic();
   const response = await client.messages.create({
     model: "claude-opus-4-8",
@@ -133,20 +169,23 @@ export async function generateFormSchema(description: string, title?: string): P
     thinking: { type: "adaptive" },
     system: SYSTEM,
     output_config: { format: { type: "json_schema", schema: OUTPUT_SCHEMA } },
-    messages: [
-      {
-        role: "user",
-        content: `Description: ${description}${title ? `\nRequested title: ${title}` : ""}`,
-      },
-    ],
+    messages: [{ role: "user", content: userPrompt(description, title) }],
   });
   if (response.stop_reason === "refusal") {
     return { schema: schemaFromDescription(description, title), source: "heuristic" };
   }
   const text = response.content.find((b) => b.type === "text");
   if (!text || text.type !== "text") throw new Error("AI returned no schema");
-  const raw = JSON.parse(text.text);
-  // model output omits theme/settings (not in OUTPUT_SCHEMA) — fill defaults, then validate hard
-  const schema = parseFormSchema({ theme: {}, settings: {}, ...raw, ...(title ? { title } : {}) });
-  return { schema, source: "ai" };
+  return finalize(JSON.parse(text.text), title, "claude");
+}
+
+/**
+ * Provider chain: Grok (XAI_API_KEY) → Claude (ANTHROPIC_API_KEY) → keyword
+ * heuristic. Errors from a configured provider surface to the caller — a bad
+ * key should be fixed, not silently masked by the heuristic.
+ */
+export async function generateFormSchema(description: string, title?: string): Promise<GeneratedForm> {
+  if (process.env.XAI_API_KEY) return generateWithGrok(description, title);
+  if (process.env.ANTHROPIC_API_KEY) return generateWithClaude(description, title);
+  return { schema: schemaFromDescription(description, title), source: "heuristic" };
 }
