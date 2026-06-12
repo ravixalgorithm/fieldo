@@ -23,6 +23,22 @@ export default function InboxPage({ params }: { params: { id: string } }) {
   const [folder, setFolder] = useState<"inbox" | "spam">("inbox");
   const [search, setSearch] = useState("");
   const [selected, setSelected] = useState<SubmissionRow | null>(null);
+  const [counts, setCounts] = useState({ inbox: 0, spam: 0, unread: 0 });
+
+  const loadCounts = useCallback(async () => {
+    const [inboxRes, spamRes] = await Promise.all([
+      fetch(`/api/forms/${params.id}/submissions?status=complete`),
+      fetch(`/api/forms/${params.id}/submissions?status=flagged`),
+    ]);
+    const inboxData = await inboxRes.json();
+    const spamData = await spamRes.json();
+    const inboxRows: SubmissionRow[] = inboxData.submissions ?? [];
+    setCounts({
+      inbox: inboxRows.length,
+      spam: (spamData.submissions ?? []).length,
+      unread: inboxRows.filter((s) => !s.readAt).length,
+    });
+  }, [params.id]);
 
   const load = useCallback(async () => {
     const q = new URLSearchParams();
@@ -34,8 +50,13 @@ export default function InboxPage({ params }: { params: { id: string } }) {
 
   useEffect(() => {
     void load();
+    void loadCounts();
     void fetch(`/api/forms/${params.id}`).then((r) => r.json()).then((d) => setSchema(d.form?.draftSchema ?? null));
-  }, [load, params.id]);
+  }, [load, loadCounts, params.id]);
+
+  const refresh = useCallback(async () => {
+    await Promise.all([load(), loadCounts()]);
+  }, [load, loadCounts]);
 
   const act = async (sid: string, action: string) => {
     await fetch(`/api/forms/${params.id}/submissions/${sid}`, {
@@ -44,18 +65,24 @@ export default function InboxPage({ params }: { params: { id: string } }) {
       body: JSON.stringify({ action }),
     });
     setSelected(null);
-    void load();
+    void refresh();
   };
 
   const remove = async (sid: string) => {
     await fetch(`/api/forms/${params.id}/submissions/${sid}`, { method: "DELETE" });
     setSelected(null);
-    void load();
+    void refresh();
   };
 
   const open = (s: SubmissionRow) => {
     setSelected(s);
-    if (!s.readAt) void act(s.id, "read");
+    if (!s.readAt) {
+      void fetch(`/api/forms/${params.id}/submissions/${s.id}`, {
+        method: "PATCH",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ action: "read" }),
+      }).then(() => refresh());
+    }
   };
 
   const fields = schema?.pages.flatMap((p) => p.fields).filter((f) => f.type !== "statement") ?? [];
@@ -74,8 +101,15 @@ export default function InboxPage({ params }: { params: { id: string } }) {
       </div>
 
       <div className="tabs">
-        <button className={folder === "inbox" ? "active" : ""} onClick={() => setFolder("inbox")}>Inbox</button>
-        <button className={folder === "spam" ? "active" : ""} onClick={() => setFolder("spam")}>Spam folder</button>
+        <button className={folder === "inbox" ? "active" : ""} onClick={() => setFolder("inbox")}>
+          Inbox
+          <span className="tab-count">{counts.inbox}</span>
+          {counts.unread > 0 ? <span className="tab-count alert">{counts.unread}</span> : null}
+        </button>
+        <button className={folder === "spam" ? "active" : ""} onClick={() => setFolder("spam")}>
+          Spam folder
+          {counts.spam > 0 ? <span className="tab-count alert">{counts.spam}</span> : <span className="tab-count">0</span>}
+        </button>
         <input
           className="text"
           style={{ maxWidth: 240, marginLeft: "auto" }}

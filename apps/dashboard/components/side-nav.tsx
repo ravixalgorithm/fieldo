@@ -9,6 +9,7 @@ type NavItem = {
   icon: string;
   external?: boolean;
   badge?: number;
+  match?: (pathname: string) => boolean;
 };
 
 type NavGroup = {
@@ -45,10 +46,11 @@ function NavLink({ item, active }: { item: NavItem; active: boolean }) {
 export function SideNav({ inboxBadge = 0 }: { inboxBadge?: number }) {
   const pathname = usePathname() ?? "/";
 
-  const isActive = (href: string) => {
-    if (href === "/") return pathname === "/";
-    if (href === "/developers") return pathname === "/developers";
-    return pathname === href || pathname.startsWith(`${href}/`);
+  const navActive = (item: NavItem) => {
+    if (item.match) return item.match(pathname);
+    if (item.href === "/") return pathname === "/";
+    if (item.href === "/developers") return pathname === "/developers";
+    return pathname === item.href || pathname.startsWith(`${item.href}/`);
   };
 
   const groups: NavGroup[] = [
@@ -56,15 +58,38 @@ export function SideNav({ inboxBadge = 0 }: { inboxBadge?: number }) {
       title: "Primary",
       items: [
         { label: "Overview", href: "/", icon: "◧" },
-        { label: "Forms", href: "/forms", icon: "▤" },
-        { label: "Inbox", href: "/forms", icon: "▣", badge: inboxBadge },
+        {
+          label: "Forms",
+          href: "/forms",
+          icon: "▤",
+          match: (p) =>
+            p === "/forms" ||
+            (/^\/forms\/[^/]+$/.test(p) && !p.endsWith("/inbox") && !p.endsWith("/analytics")),
+        },
+        {
+          label: "Inbox",
+          href: "/inbox",
+          icon: "▣",
+          badge: inboxBadge,
+          match: (p) => p === "/inbox" || /\/inbox(\/|$)/.test(p),
+        },
       ],
     },
     {
       title: "Workspace",
       items: [
-        { label: "Destinations", href: "/forms", icon: "⇢" },
-        { label: "API Keys", href: "/settings", icon: "⌁" },
+        {
+          label: "Analytics",
+          href: "/analytics",
+          icon: "◫",
+          match: (p) => p === "/analytics" || /\/analytics(\/|$)/.test(p),
+        },
+        {
+          label: "API Keys",
+          href: "/settings",
+          icon: "⌁",
+          match: (p) => p === "/settings",
+        },
       ],
     },
     {
@@ -89,7 +114,7 @@ export function SideNav({ inboxBadge = 0 }: { inboxBadge?: number }) {
         <div key={group.title} className="nav-group">
           <div className="nav-group-title">{group.title}</div>
           {group.items.map((item) => (
-            <NavLink key={`${group.title}-${item.label}`} item={item} active={isActive(item.href)} />
+            <NavLink key={`${group.title}-${item.label}`} item={item} active={navActive(item)} />
           ))}
         </div>
       ))}

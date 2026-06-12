@@ -1,12 +1,9 @@
 "use client";
 
 /**
- * Visual form builder — palette, drag-reorderable field list, property panel,
- * pages, theme + settings editors. Mutates a FormSchemaV1 held by the parent;
- * the JSON tab and live preview stay in sync because the schema object is the
- * single source of truth.
+ * Visual form builder — fields list with inline expand-down editor per field.
  */
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import type { FieldDef, FieldType, FormSchemaV1, Page } from "@fieldo/types";
 
 const FIELD_TYPES: { type: FieldType; label: string; icon: string }[] = [
@@ -32,6 +29,189 @@ const OPTION_TYPES: FieldType[] = ["select", "radio", "multi-select"];
 let seq = 0;
 const newId = (prefix: string) => `${prefix}_${Date.now().toString(36)}${(seq++).toString(36)}`;
 
+const fieldTypeMeta = (type: FieldType) => FIELD_TYPES.find((t) => t.type === type);
+
+function defaultOptions() {
+  return [
+    { label: "Option 1", value: "option_1" },
+    { label: "Option 2", value: "option_2" },
+  ];
+}
+
+function applyFieldType(base: FieldDef, type: FieldType): FieldDef {
+  const meta = fieldTypeMeta(type)!;
+  const next: FieldDef = {
+    id: base.id,
+    type,
+    label: base.label === fieldTypeMeta(base.type)?.label ? meta.label : base.label,
+  };
+  if (OPTION_TYPES.includes(type)) {
+    next.options = base.options?.length ? base.options : defaultOptions();
+  }
+  if (type === "hidden" && base.hiddenSource) next.hiddenSource = base.hiddenSource;
+  if (base.placeholder && type !== "statement" && type !== "hidden") next.placeholder = base.placeholder;
+  if (base.helpText && type !== "statement" && type !== "hidden") next.helpText = base.helpText;
+  if (base.required && type !== "statement" && type !== "hidden") next.required = true;
+  return next;
+}
+
+function FieldTypeDropdown({
+  value,
+  onChange,
+}: {
+  value: FieldType;
+  onChange: (type: FieldType) => void;
+}) {
+  const [open, setOpen] = useState(false);
+  const rootRef = useRef<HTMLDivElement>(null);
+  const selected = fieldTypeMeta(value);
+
+  useEffect(() => {
+    if (!open) return;
+    const onPointer = (e: MouseEvent) => {
+      if (!rootRef.current?.contains(e.target as Node)) setOpen(false);
+    };
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") setOpen(false);
+    };
+    document.addEventListener("mousedown", onPointer);
+    document.addEventListener("keydown", onKey);
+    return () => {
+      document.removeEventListener("mousedown", onPointer);
+      document.removeEventListener("keydown", onKey);
+    };
+  }, [open]);
+
+  return (
+    <div className="field-type-select" ref={rootRef}>
+      <span className="field-type-select-label">Field type</span>
+      <button
+        type="button"
+        className={`field-type-select-trigger ${open ? "open" : ""}`}
+        aria-haspopup="listbox"
+        aria-expanded={open}
+        onClick={() => setOpen((v) => !v)}
+      >
+        <span className="field-type-select-icon">{selected?.icon ?? "?"}</span>
+        <span className="field-type-select-value">{selected?.label ?? value}</span>
+        <span className="field-type-select-chevron" aria-hidden>
+          ▾
+        </span>
+      </button>
+      {open && (
+        <ul className="field-type-select-menu" role="listbox" aria-label="Field type">
+          {FIELD_TYPES.map((t) => (
+            <li key={t.type} role="none">
+              <button
+                type="button"
+                role="option"
+                aria-selected={t.type === value}
+                className={`field-type-select-option ${t.type === value ? "selected" : ""}`}
+                onClick={() => {
+                  onChange(t.type);
+                  setOpen(false);
+                }}
+              >
+                <span className="field-type-select-option-icon">{t.icon}</span>
+                <span className="field-type-select-option-label">{t.label}</span>
+                {t.type === value ? <span className="field-type-select-check">✓</span> : null}
+              </button>
+            </li>
+          ))}
+        </ul>
+      )}
+    </div>
+  );
+}
+
+function FieldEditorPanel({
+  field,
+  onChange,
+  onDelete,
+}: {
+  field: FieldDef;
+  onChange: (next: FieldDef) => void;
+  onDelete: () => void;
+}) {
+  const setType = (type: FieldType) => onChange(applyFieldType(field, type));
+
+  return (
+    <div className="field-editor-panel" onClick={(e) => e.stopPropagation()}>
+      <div className="props-form">
+        <FieldTypeDropdown value={field.type} onChange={setType} />
+        <label>
+          Label
+          <input value={field.label} onChange={(e) => onChange({ ...field, label: e.target.value })} />
+        </label>
+        {field.type !== "statement" && field.type !== "hidden" && (
+          <>
+            <label>
+              Placeholder
+              <input
+                value={field.placeholder ?? ""}
+                onChange={(e) => onChange({ ...field, placeholder: e.target.value || undefined })}
+              />
+            </label>
+            <label>
+              Help text
+              <input
+                value={field.helpText ?? ""}
+                onChange={(e) => onChange({ ...field, helpText: e.target.value || undefined })}
+              />
+            </label>
+            <label className="checkbox-label">
+              <input
+                type="checkbox"
+                checked={!!field.required}
+                onChange={(e) => onChange({ ...field, required: e.target.checked || undefined })}
+              />
+              Required
+            </label>
+          </>
+        )}
+        {OPTION_TYPES.includes(field.type) && (
+          <label>
+            Options (one per line)
+            <textarea
+              rows={4}
+              value={(field.options ?? []).map((o) => o.label).join("\n")}
+              onChange={(e) =>
+                onChange({
+                  ...field,
+                  options: e.target.value
+                    .split("\n")
+                    .filter((l) => l.trim())
+                    .map((l) => ({
+                      label: l.trim(),
+                      value: l
+                        .trim()
+                        .toLowerCase()
+                        .replace(/[^a-z0-9]+/g, "_")
+                        .replace(/^_+|_+$/g, ""),
+                    })),
+                })
+              }
+            />
+          </label>
+        )}
+        {field.type === "hidden" && (
+          <label>
+            Source query param
+            <input
+              value={field.hiddenSource ?? ""}
+              placeholder="utm_source"
+              onChange={(e) => onChange({ ...field, hiddenSource: e.target.value || undefined })}
+            />
+          </label>
+        )}
+      </div>
+      <button type="button" className="btn danger small" onClick={onDelete}>
+        Delete field
+      </button>
+    </div>
+  );
+}
+
 export function Builder({
   schema,
   onChange,
@@ -40,11 +220,10 @@ export function Builder({
   onChange: (next: FormSchemaV1) => void;
 }) {
   const [pageIndex, setPageIndex] = useState(0);
-  const [selectedId, setSelectedId] = useState<string | null>(null);
   const [dragId, setDragId] = useState<string | null>(null);
+  const [expandedId, setExpandedId] = useState<string | null>(null);
 
   const page: Page = schema.pages[Math.min(pageIndex, schema.pages.length - 1)];
-  const selected = page.fields.find((f) => f.id === selectedId) ?? null;
 
   const update = (mutate: (draft: FormSchemaV1) => void) => {
     const draft = structuredClone(schema);
@@ -52,27 +231,19 @@ export function Builder({
     onChange(draft);
   };
 
-  const addField = (type: FieldType) => {
-    const id = newId("fld");
+  const replaceField = (id: string, field: FieldDef) =>
     update((d) => {
-      const def = FIELD_TYPES.find((t) => t.type === type)!;
-      const field: FieldDef = { id, type, label: def.label };
-      if (OPTION_TYPES.includes(type)) {
-        field.options = [
-          { label: "Option 1", value: "option_1" },
-          { label: "Option 2", value: "option_2" },
-        ];
-      }
-      d.pages[pageIndex].fields.push(field);
+      const i = d.pages[pageIndex].fields.findIndex((x) => x.id === id);
+      if (i >= 0) d.pages[pageIndex].fields[i] = field;
     });
-    setSelectedId(id);
+
+  const addField = () => {
+    const id = newId("fld");
+    update((d) => d.pages[pageIndex].fields.push({ id, type: "text", label: "Text" }));
+    setExpandedId(id);
   };
 
-  const patchField = (id: string, patch: Partial<FieldDef>) =>
-    update((d) => {
-      const f = d.pages[pageIndex].fields.find((x) => x.id === id);
-      if (f) Object.assign(f, patch);
-    });
+  const toggleField = (id: string) => setExpandedId((cur) => (cur === id ? null : id));
 
   const removeField = (id: string) => {
     update((d) => {
@@ -85,7 +256,7 @@ export function Builder({
           !r.then.some((a) => "fieldId" in a && a.fieldId === id)
       );
     });
-    if (selectedId === id) setSelectedId(null);
+    if (expandedId === id) setExpandedId(null);
   };
 
   const dropOn = (targetId: string) => {
@@ -104,156 +275,110 @@ export function Builder({
   const addPage = () => {
     update((d) => d.pages.push({ id: newId("page"), fields: [] }));
     setPageIndex(schema.pages.length);
-    setSelectedId(null);
+    setExpandedId(null);
   };
 
   const removePage = (i: number) => {
     if (schema.pages.length <= 1) return;
     update((d) => d.pages.splice(i, 1));
     setPageIndex(Math.max(0, i - 1));
-    setSelectedId(null);
+    setExpandedId(null);
   };
 
   return (
     <div className="builder">
-      {/* palette */}
-      <div className="card builder-palette">
-        <strong>Add field</strong>
-        <div className="palette-grid">
-          {FIELD_TYPES.map((t) => (
-            <button key={t.type} className="palette-item" onClick={() => addField(t.type)} title={t.label}>
-              <span className="palette-icon">{t.icon}</span>
-              {t.label}
-            </button>
-          ))}
-        </div>
-      </div>
-
-      {/* field list */}
-      <div className="card builder-canvas">
-        <div className="row" style={{ justifyContent: "space-between", marginBottom: 10 }}>
+      <div className="card builder-fields">
+        <div className="builder-fields-head">
           <strong>Fields</strong>
-          <div className="page-tabs">
-            {schema.pages.map((p, i) => (
-              <button
-                key={p.id}
-                className={i === pageIndex ? "current" : ""}
-                onClick={() => {
-                  setPageIndex(i);
-                  setSelectedId(null);
-                }}
-              >
-                Page {i + 1}
+          <div className="builder-fields-actions">
+            <div className="page-tabs">
+              {schema.pages.map((p, i) => (
+                <button
+                  key={p.id}
+                  type="button"
+                  className={i === pageIndex ? "current" : ""}
+                  onClick={() => {
+                    setPageIndex(i);
+                    setExpandedId(null);
+                  }}
+                >
+                  Page {i + 1}
+                </button>
+              ))}
+              <button type="button" onClick={addPage} title="Add page">
+                +
               </button>
-            ))}
-            <button onClick={addPage} title="Add page">+</button>
-            {schema.pages.length > 1 && (
-              <button onClick={() => removePage(pageIndex)} title="Delete this page">✕</button>
-            )}
+              {schema.pages.length > 1 && (
+                <button type="button" onClick={() => removePage(pageIndex)} title="Delete this page">
+                  ✕
+                </button>
+              )}
+            </div>
+            <button type="button" className="btn small" onClick={addField}>
+              + Add field
+            </button>
           </div>
         </div>
-        {page.fields.length === 0 && <p className="empty-state">No fields yet — add one from the palette.</p>}
-        <ul className="field-list">
-          {page.fields.map((f) => (
-            <li
-              key={f.id}
-              draggable
-              onDragStart={() => setDragId(f.id)}
-              onDragOver={(e) => e.preventDefault()}
-              onDrop={() => dropOn(f.id)}
-              onClick={() => setSelectedId(f.id)}
-              className={`field-item ${selectedId === f.id ? "selected" : ""} ${dragId === f.id ? "dragging" : ""}`}
-            >
-              <span className="drag-handle" title="Drag to reorder">⠿</span>
-              <span className="field-type">{FIELD_TYPES.find((t) => t.type === f.type)?.label ?? f.type}</span>
-              <span className="field-label">
-                {f.label}
-                {f.required && <span className="req">*</span>}
-              </span>
-              <button
-                className="field-delete"
-                title="Delete field"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  removeField(f.id);
-                }}
-              >
-                ✕
-              </button>
-            </li>
-          ))}
-        </ul>
-      </div>
 
-      {/* property panel */}
-      <div className="card builder-props">
-        <strong>Field settings</strong>
-        {!selected ? (
-          <p className="empty-state">Select a field in the list to edit its label, options, and validation.</p>
-        ) : (
-          <div className="props-form" key={selected.id}>
-            <label>
-              Label
-              <input value={selected.label} onChange={(e) => patchField(selected.id, { label: e.target.value })} />
-            </label>
-            {selected.type !== "statement" && selected.type !== "hidden" && (
-              <>
-                <label>
-                  Placeholder
-                  <input
-                    value={selected.placeholder ?? ""}
-                    onChange={(e) => patchField(selected.id, { placeholder: e.target.value || undefined })}
-                  />
-                </label>
-                <label>
-                  Help text
-                  <input
-                    value={selected.helpText ?? ""}
-                    onChange={(e) => patchField(selected.id, { helpText: e.target.value || undefined })}
-                  />
-                </label>
-                <label className="checkbox-label">
-                  <input
-                    type="checkbox"
-                    checked={!!selected.required}
-                    onChange={(e) => patchField(selected.id, { required: e.target.checked || undefined })}
-                  />
-                  Required
-                </label>
-              </>
-            )}
-            {OPTION_TYPES.includes(selected.type) && (
-              <label>
-                Options (one per line)
-                <textarea
-                  rows={5}
-                  value={(selected.options ?? []).map((o) => o.label).join("\n")}
-                  onChange={(e) =>
-                    patchField(selected.id, {
-                      options: e.target.value
-                        .split("\n")
-                        .filter((l) => l.trim())
-                        .map((l) => ({
-                          label: l.trim(),
-                          value: l.trim().toLowerCase().replace(/[^a-z0-9]+/g, "_").replace(/^_+|_+$/g, ""),
-                        })),
-                    })
-                  }
-                />
-              </label>
-            )}
-            {selected.type === "hidden" && (
-              <label>
-                Source query param
-                <input
-                  value={selected.hiddenSource ?? ""}
-                  placeholder="utm_source"
-                  onChange={(e) => patchField(selected.id, { hiddenSource: e.target.value || undefined })}
-                />
-              </label>
-            )}
-            <p className="muted" style={{ fontSize: 12 }}>id: {selected.id}</p>
+        {page.fields.length === 0 ? (
+          <div className="builder-fields-empty">
+            <p className="empty-state">No fields on this page yet.</p>
+            <button type="button" className="btn secondary" onClick={addField}>
+              Add your first field
+            </button>
           </div>
+        ) : (
+          <ul className="field-list">
+            {page.fields.map((f) => {
+              const meta = fieldTypeMeta(f.type);
+              const expanded = expandedId === f.id;
+              return (
+                <li key={f.id} className={`field-block ${expanded ? "expanded" : ""}`}>
+                  <div
+                    draggable
+                    onDragStart={() => setDragId(f.id)}
+                    onDragOver={(e) => e.preventDefault()}
+                    onDrop={() => dropOn(f.id)}
+                    onClick={() => toggleField(f.id)}
+                    className={`field-item ${expanded ? "selected" : ""} ${dragId === f.id ? "dragging" : ""}`}
+                  >
+                    <span className="drag-handle" title="Drag to reorder" onClick={(e) => e.stopPropagation()}>
+                      ⠿
+                    </span>
+                    <span className="field-type-icon">{meta?.icon ?? "?"}</span>
+                    <div className="field-item-main">
+                      <span className="field-item-label">
+                        {f.label}
+                        {f.required && <span className="req">*</span>}
+                      </span>
+                      <span className="field-item-type">{meta?.label ?? f.type}</span>
+                    </div>
+                    <span className="field-chevron" aria-hidden>
+                      {expanded ? "▾" : "▸"}
+                    </span>
+                    <button
+                      type="button"
+                      className="field-delete"
+                      title="Delete field"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        removeField(f.id);
+                      }}
+                    >
+                      ✕
+                    </button>
+                  </div>
+                  {expanded && (
+                    <FieldEditorPanel
+                      field={f}
+                      onChange={(next) => replaceField(f.id, next)}
+                      onDelete={() => removeField(f.id)}
+                    />
+                  )}
+                </li>
+              );
+            })}
+          </ul>
         )}
       </div>
     </div>
